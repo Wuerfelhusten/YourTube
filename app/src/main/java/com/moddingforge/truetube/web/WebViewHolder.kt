@@ -48,7 +48,24 @@ data class WebState(
 )
 
 /**
- * Owns the single, long-lived WebView. It is application-scoped so playback survives
+ * TrueTube uses two WebViews, like the official app separates browsing from the player:
+ *  - FEED shows everything except the watch page (home, Shorts, subscriptions, search, channels).
+ *  - PLAYER shows only /watch pages; it can be minimized to a mini player while the feed stays usable.
+ */
+enum class Role { FEED, PLAYER }
+
+/** Now-playing info reported by the player page (30-player.js). */
+data class VideoState(
+    val videoId: String = "",
+    val title: String = "",
+    val channel: String = "",
+    val playing: Boolean = false,
+    val position: Double = 0.0,
+    val duration: Double = 0.0,
+)
+
+/**
+ * Owns one long-lived WebView. It is application-scoped so playback survives
  * rotation, PiP and activity recreation. The WebView's context is a MutableContextWrapper
  * that points at the current activity while attached, and at the application otherwise.
  */
@@ -57,6 +74,7 @@ class WebViewHolder(
     private val json: Json,
     private val filters: FilterRepository,
     scope: CoroutineScope,
+    val role: Role,
 ) {
     private val contextWrapper = MutableContextWrapper(app)
     private var webView: WebView? = null
@@ -64,8 +82,15 @@ class WebViewHolder(
     private val _state = MutableStateFlow(WebState())
     val state: StateFlow<WebState> = _state.asStateFlow()
 
+    private val _video = MutableStateFlow(VideoState())
+    val video: StateFlow<VideoState> = _video.asStateFlow()
+
+    /** Set by [PlayerController]: where watch links / non-watch links have to go. */
+    var onOpenVideo: (String) -> Unit = {}
+    var onOpenInFeed: (String) -> Unit = {}
+
     val bridge = Bridge(json, ::onBridgeMessage)
-    val injector = ScriptInjector(app.assets, json, InjectConfig(version = BuildConfig.VERSION_CODE, debug = BuildConfig.DEBUG))
+    val injector = ScriptInjector(app.assets, json, InjectConfig(version = BuildConfig.VERSION_CODE, debug = BuildConfig.DEBUG, role = role.name.lowercase()))
     val adblock = AdblockIntegration(filters, json)
 
     private var pingSentAt = 0L
@@ -81,10 +106,7 @@ class WebViewHolder(
             filters.state.collect { st ->
                 adblockSettled = true
                 if (st is EngineState.Ready) webView?.let { adblock.install(it, st.engine) }
-                pendingInitialUrl?.let { url ->
-                    pendingInitialUrl = null
-                    webView?.loadUrl(url)
-                }
+                flushPending()
             }
         }
     }
@@ -94,6 +116,7 @@ class WebViewHolder(
         contextWrapper.baseContext = activity
         val wv = webView ?: create().also { webView = it }
         (wv.parent as? ViewGroup)?.removeView(wv)
+        flushPending()
         return wv
     }
 
@@ -107,12 +130,22 @@ class WebViewHolder(
         if (wv.url == null && pendingInitialUrl == null) load(url)
     }
 
+    /** Loads [url]; held back until the WebView exists and the adblock engine has settled. */
     fun load(url: String) {
-        val wv = webView ?: return
-        if (!adblockSettled) {
+        val wv = webView
+        if (wv == null || !adblockSettled) {
             pendingInitialUrl = url
-            _state.update { it.copy(progress = 5) }
+            _state.update { it.copy(url = url, progress = 5) }
         } else {
+            wv.loadUrl(url)
+        }
+    }
+
+    private fun flushPending() {
+        val wv = webView ?: return
+        if (!adblockSettled) return
+        pendingInitialUrl?.let { url ->
+            pendingInitialUrl = null
             wv.loadUrl(url)
         }
     }
@@ -135,6 +168,49 @@ class WebViewHolder(
 
     fun reload() {
         webView?.reload()
+    }
+
+    fun send(command: BridgeCommand) = bridge.send(command)
+
+    /** Player: mini layout wanted; re-applied whenever a new page becomes ready. */
+    var miniMode = false
+        set(value) {
+            field = value
+            bridge.send(BridgeCommand.PlayerMini(value))
+        }
+
+    /** Player only: stop playback and free the page (mini player closed). */
+    fun clear() {
+        bridge.send(BridgeCommand.PlayerControl("pause"))
+        webView?.loadUrl("about:blank")
+        webView?.clearHistory()
+        _video.value = VideoState()
+    }
+
+    /**
+     * Role routing for a navigation to [url]. Returns true if it was handed to the other
+     * WebView (the caller must then cancel it here).
+     */
+    internal fun routeAway(url: String): Boolean {
+        val page = Page.of(url)
+        val host = android.net.Uri.parse(url).host.orEmpty().lowercase()
+        val youTubeContent = UrlRouter.isYouTube(host) && host != "consent.youtube.com" && host != "accounts.youtube.com"
+        return when (role) {
+            Role.FEED -> if (page == Page.WATCH) { onOpenVideo(url); true } else false
+            Role.PLAYER -> if (youTubeContent && page != Page.WATCH) { onOpenInFeed(url); true } else false
+        }
+    }
+
+    /**
+     * SPA navigations (pushState) don't pass shouldOverrideUrlLoading. If the page navigated
+     * to something that belongs to the other WebView anyway, undo it here and hand it over.
+     */
+    private fun enforceRole(url: String) {
+        if (url.startsWith("about:")) return
+        if (routeAway(url)) {
+            val wv = webView ?: return
+            if (wv.canGoBack()) wv.goBack() else if (role == Role.FEED) wv.loadUrl(UrlRouter.HOME) else clear()
+        }
     }
 
     fun search(query: String) {
@@ -194,10 +270,9 @@ class WebViewHolder(
         CookieManager.getInstance().flush()
     }
 
-    private var serviceWorkerHooked = false
-
     /** Requests made by YouTube's service worker bypass WebViewClient; route them through the engine too. */
     private fun hookServiceWorker() {
+        // The service worker client is process-wide; one hook covers both WebViews.
         if (serviceWorkerHooked || !WebViewFeature.isFeatureSupported(WebViewFeature.SERVICE_WORKER_SHOULD_INTERCEPT_REQUEST)) return
         ServiceWorkerControllerCompat.getInstance().setServiceWorkerClient(object : ServiceWorkerClientCompat() {
             override fun shouldInterceptRequest(request: WebResourceRequest): WebResourceResponse? = adblock.intercept(request)
@@ -267,6 +342,7 @@ class WebViewHolder(
 
     internal fun onHistoryChanged(view: WebView, url: String) {
         _state.update { it.copy(url = url, canGoBack = view.canGoBack()) }
+        enforceRole(url)
     }
 
     internal fun onProgress(progress: Int) {
@@ -302,6 +378,7 @@ class WebViewHolder(
                 _state.update { it.copy(bridgeReady = true) }
                 pingSentAt = System.currentTimeMillis()
                 bridge.send(BridgeCommand.Ping(pingSentAt))
+                if (role == Role.PLAYER) bridge.send(BridgeCommand.PlayerMini(miniMode))
             }
             is BridgeMessage.Pong -> {
                 val rtt = System.currentTimeMillis() - msg.nonce
@@ -317,14 +394,21 @@ class WebViewHolder(
             }
             BridgeMessage.AdSkipped -> {
                 val n = adblock.skippedAds.incrementAndGet()
-                Log.w(TAG, "fallback skipped a video ad (#$n) on ${_state.value.url}")
+                Log.w(TAG, "[$role] fallback skipped a video ad (#$n) on ${_state.value.url}")
             }
             is BridgeMessage.Navigation -> {
                 adblock.pageUrl = msg.url
-                Log.i(Bridge.TAG, "navigation ${msg.url} | ${msg.title}")
+                Log.i(Bridge.TAG, "[$role] navigation ${msg.url} | ${msg.title}")
                 _state.update { it.copy(url = msg.url, title = msg.title, canGoBack = webView?.canGoBack() ?: false) }
                 refreshSignIn()
+                enforceRole(msg.url)
             }
+            is BridgeMessage.OpenVideo -> onOpenVideo(msg.url)
+            is BridgeMessage.OpenInFeed -> onOpenInFeed(msg.url)
+            is BridgeMessage.VideoStateMsg -> _video.value = VideoState(
+                videoId = msg.videoId, title = msg.title, channel = msg.channel,
+                playing = msg.playing, position = msg.position, duration = msg.duration,
+            )
             is BridgeMessage.Log -> Log.println(
                 when (msg.level) { "error" -> Log.ERROR; "warn" -> Log.WARN; "debug" -> Log.DEBUG; else -> Log.INFO },
                 "TT.JS", msg.message,
@@ -335,6 +419,7 @@ class WebViewHolder(
     companion object {
         private const val TAG = "TT.WebView"
         private const val ENGINE_WAIT_MS = 3_000L
+        private var serviceWorkerHooked = false
     }
 }
 

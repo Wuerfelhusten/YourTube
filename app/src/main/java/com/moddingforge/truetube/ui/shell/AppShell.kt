@@ -82,7 +82,12 @@ import com.moddingforge.truetube.BuildConfig
 import com.moddingforge.truetube.R
 import com.moddingforge.truetube.data.SearchHistory
 import com.moddingforge.truetube.data.SearchSuggestions
+import androidx.compose.foundation.layout.asPaddingValues
+import com.moddingforge.truetube.ui.player.MiniPlayerHeight
+import com.moddingforge.truetube.ui.player.PlayerLayer
 import com.moddingforge.truetube.web.Page
+import com.moddingforge.truetube.web.PlayerController
+import com.moddingforge.truetube.web.PlayerMode
 import com.moddingforge.truetube.web.Tab
 import com.moddingforge.truetube.web.WebState
 import com.moddingforge.truetube.web.WebViewHolder
@@ -95,18 +100,22 @@ import kotlinx.coroutines.delay
  */
 @Composable
 fun AppShell(
-    holder: WebViewHolder,
+    controller: PlayerController,
     activity: ComponentActivity,
     suggestions: SearchSuggestions,
     history: SearchHistory,
 ) {
+    val holder = controller.feed
     val state by holder.state.collectAsStateWithLifecycle()
+    val playerMode by controller.mode.collectAsStateWithLifecycle()
     val page = if (state.url.isEmpty()) Page.HOME else Page.of(state.url)
     var searchOpen by rememberSaveable { mutableStateOf(false) }
     val wide = LocalConfiguration.current.screenWidthDp >= 600
     val dark = isSystemInDarkTheme()
+    val tabBarShown = !wide && page.showsTabBar
+    val navInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
-    SystemBarIcons(lightIcons = dark || page == Page.WATCH || page == Page.SHORTS)
+    SystemBarIcons(lightIcons = dark || page == Page.WATCH || page == Page.SHORTS || playerMode == PlayerMode.EXPANDED)
 
     BackHandler(enabled = !searchOpen) {
         if (!holder.goBack()) activity.moveTaskToBack(true)
@@ -133,7 +142,9 @@ fun AppShell(
                 Spacer(Modifier.fillMaxWidth().windowInsetsTopHeight(WindowInsets.statusBars))
             }
 
-            Box(Modifier.weight(1f).fillMaxWidth().imePadding()) {
+            // Keep the feed's last items reachable above the mini player.
+            val miniPad = if (playerMode == PlayerMode.MINI) MiniPlayerHeight else 0.dp
+            Box(Modifier.weight(1f).fillMaxWidth().imePadding().padding(bottom = miniPad)) {
                 WebContent(holder, activity, state, page)
                 if (state.progress in 1..99) {
                     LinearProgressIndicator(progress = { state.progress / 100f }, modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter))
@@ -141,13 +152,20 @@ fun AppShell(
                 if (BuildConfig.DEBUG) DebugChip(state, holder, Modifier.align(Alignment.BottomStart))
             }
 
-            if (!wide && page.showsTabBar) {
+            if (tabBarShown) {
                 TabBar(page, onSelect = holder::selectTab)
             } else {
                 Spacer(Modifier.fillMaxWidth().windowInsetsBottomHeight(WindowInsets.navigationBars))
             }
         }
     }
+
+    // Player above the feed: full screen, or the mini bar right above the tab bar.
+    PlayerLayer(
+        controller = controller,
+        activity = activity,
+        miniBottomPadding = navInset + if (tabBarShown) TabBarHeight + 1.dp else 0.dp,
+    )
 
     if (searchOpen) {
         SearchScreen(
@@ -273,13 +291,15 @@ private fun tabSpecs(): List<TabSpec> = listOf(
     TabSpec(Tab.YOU, R.string.tab_you) { sel -> rememberVectorPainter(if (sel) Icons.Filled.AccountCircle else Icons.Outlined.AccountCircle) },
 )
 
+private val TabBarHeight = 56.dp
+
 /** Compact bottom bar like the official app (56dp, small labels), not the 80dp Material bar. */
 @Composable
 private fun TabBar(page: Page, onSelect: (Tab) -> Unit) {
     val selected = Tab.of(page)
     Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)) {
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-        Row(Modifier.fillMaxWidth().navigationBarsPadding().height(56.dp)) {
+        Row(Modifier.fillMaxWidth().navigationBarsPadding().height(TabBarHeight)) {
             for (spec in tabSpecs()) {
                 val sel = spec.tab == selected
                 Column(

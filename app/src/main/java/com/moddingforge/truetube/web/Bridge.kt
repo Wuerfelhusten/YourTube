@@ -28,6 +28,25 @@ sealed interface BridgeMessage {
     @Serializable @SerialName("cosmetic-classids")
     data class CosmeticClassIds(val host: String, val classes: List<String> = emptyList(), val ids: List<String> = emptyList()) : BridgeMessage
 
+    /** Feed: a watch link was tapped - open it in the player WebView. */
+    @Serializable @SerialName("open-video")
+    data class OpenVideo(val url: String) : BridgeMessage
+
+    /** Player: a non-watch link (channel, hashtag ...) was tapped - open it in the feed WebView. */
+    @Serializable @SerialName("open-in-feed")
+    data class OpenInFeed(val url: String) : BridgeMessage
+
+    /** Player: now-playing info for the mini player / media session. */
+    @Serializable @SerialName("video-state")
+    data class VideoStateMsg(
+        val videoId: String = "",
+        val title: String = "",
+        val channel: String = "",
+        val playing: Boolean = false,
+        val position: Double = 0.0,
+        val duration: Double = 0.0,
+    ) : BridgeMessage
+
     /** The fallback script had to skip a video ad (blocking missed it). */
     @Serializable @SerialName("ad-skipped")
     data object AdSkipped : BridgeMessage
@@ -45,6 +64,14 @@ sealed interface BridgeCommand {
 
     @Serializable @SerialName("scroll-top")
     data object ScrollTop : BridgeCommand
+
+    /** Player: play | pause | toggle */
+    @Serializable @SerialName("player-control")
+    data class PlayerControl(val action: String) : BridgeCommand
+
+    /** Player: switch the page into mini layout (only the video, filling the small WebView). */
+    @Serializable @SerialName("player-mini")
+    data class PlayerMini(val on: Boolean) : BridgeCommand
 
     /** Generic hide selectors the engine returned for reported classes/ids. */
     @Serializable @SerialName("cosmetic-hide")

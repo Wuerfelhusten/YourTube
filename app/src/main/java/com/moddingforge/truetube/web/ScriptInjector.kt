@@ -10,7 +10,7 @@ import kotlinx.serialization.json.Json
 
 /** Values handed to every injected script as `TT_CONFIG`. */
 @Serializable
-data class InjectConfig(val version: Int, val debug: Boolean)
+data class InjectConfig(val version: Int, val debug: Boolean, val role: String = "feed")
 
 /**
  * Bundles all .js files in assets/inject (sorted by file name) into one script and registers it to run

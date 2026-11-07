@@ -16,7 +16,8 @@ class TrueWebViewClient(private val holder: WebViewHolder) : WebViewClient() {
         if (!request.isForMainFrame) return false
         val url = request.url.toString()
         return when (val decision = UrlRouter.route(url)) {
-            UrlRouter.Decision.InApp -> false
+            // Watch pages belong to the player WebView, everything else to the feed.
+            UrlRouter.Decision.InApp -> holder.routeAway(url)
             is UrlRouter.Decision.Rewrite -> {
                 view.loadUrl(decision.url)
                 true

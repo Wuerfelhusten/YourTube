@@ -4,6 +4,8 @@ import android.app.Application
 import android.webkit.WebView
 import com.moddingforge.truetube.adblock.AdblockUpdateWorker
 import com.moddingforge.truetube.adblock.FilterRepository
+import com.moddingforge.truetube.web.PlayerController
+import com.moddingforge.truetube.web.Role
 import com.moddingforge.truetube.web.WebViewHolder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -34,5 +36,9 @@ class AppContainer(app: Application) {
         encodeDefaults = true
     }
     val filterRepository = FilterRepository(app, json, appScope, debug = BuildConfig.DEBUG)
-    val webViewHolder = WebViewHolder(app, json, filterRepository, appScope)
+    /** Feed WebView: everything except watch pages. */
+    val feed = WebViewHolder(app, json, filterRepository, appScope, Role.FEED)
+    /** Player WebView: watch pages only (full screen or mini player). */
+    val player = WebViewHolder(app, json, filterRepository, appScope, Role.PLAYER)
+    val playerController = PlayerController(feed, player)
 }
