@@ -51,6 +51,10 @@ sealed interface BridgeMessage {
     @Serializable @SerialName("sponsor-skipped")
     data class SponsorSkipped(val category: String, val seconds: Double = 0.0) : BridgeMessage
 
+    /** Video ids visible on the page (DeArrow lookups). */
+    @Serializable @SerialName("video-ids")
+    data class VideoIds(val ids: List<String>) : BridgeMessage
+
     /** navigator.share() from the page -> native share sheet. */
     @Serializable @SerialName("share")
     data class Share(val url: String = "", val title: String = "", val text: String = "") : BridgeMessage
@@ -95,6 +99,10 @@ sealed interface BridgeCommand {
     /** Player: Return YouTube Dislike count for [videoId]. */
     @Serializable @SerialName("dislikes")
     data class Dislikes(val videoId: String, val count: Long) : BridgeCommand
+
+    /** DeArrow: community titles by video id. */
+    @Serializable @SerialName("dearrow-titles")
+    data class DearrowTitles(val titles: Map<String, String>) : BridgeCommand
 
     /** CSS from TrueTube Settings (hide comments, custom CSS). Empty = remove. */
     @Serializable @SerialName("user-css")

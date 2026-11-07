@@ -118,6 +118,17 @@ class WebViewHolder(
     val bridge = Bridge(json, ::onBridgeMessage)
     val injector = ScriptInjector(app.assets, json, InjectConfig(version = BuildConfig.VERSION_CODE, debug = BuildConfig.DEBUG, role = role.name.lowercase()))
     val adblock = AdblockIntegration(filters, json, enabled = { settings.current.adblockEnabled })
+    private val dataRules = DataRulesScript(json)
+
+    /** Video ids reported by the page (for DeArrow); set by DeArrowService. */
+    var onVideoIds: (List<String>) -> Unit = {}
+
+    /** Feed filter / DeArrow settings changed: new rules apply from the next page load on. */
+    fun refreshDataRules(reload: Boolean) {
+        val wv = webView ?: return
+        dataRules.apply(wv, FilterRules.from(settings.current))
+        if (reload && wv.url != null && wv.url != "about:blank") wv.reload()
+    }
 
     /** Ad blocker switched on/off: (un)register Brave's page scripts and reload so it applies. */
     fun refreshAdblock() {
@@ -358,6 +369,7 @@ class WebViewHolder(
             webViewClient = TrueWebViewClient(this@WebViewHolder)
             webChromeClient = TrueChromeClient(this@WebViewHolder)
 
+            dataRules.apply(this, FilterRules.from(this@WebViewHolder.settings.current))
             injector.install(this)
             bridge.install(this)
             // Order matters: the core bundle first, then Brave's per-host scripts.
@@ -424,6 +436,7 @@ class WebViewHolder(
         if (webView === view) webView = null
         bridge.reset()
         adblock.reset()
+        dataRules.reset()
         _state.update { WebState(url = lastUrl.orEmpty(), generation = it.generation + 1) }
         pendingUrl = lastUrl
     }
@@ -472,6 +485,7 @@ class WebViewHolder(
             }
             is BridgeMessage.Fullscreen -> onFullscreen(msg.on)
             is BridgeMessage.Share -> share(msg.url, msg.title)
+            is BridgeMessage.VideoIds -> onVideoIds(msg.ids)
             is BridgeMessage.SponsorSkipped -> {
                 Log.i(TAG, "SponsorBlock skipped ${msg.category} (${msg.seconds.toInt()} s)")
                 android.widget.Toast.makeText(app, app.getString(com.moddingforge.truetube.R.string.sponsor_skipped, sponsorLabel(msg.category)), android.widget.Toast.LENGTH_SHORT).show()

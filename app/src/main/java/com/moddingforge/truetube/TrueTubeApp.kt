@@ -6,6 +6,8 @@ import com.moddingforge.truetube.adblock.AdblockUpdateWorker
 import com.moddingforge.truetube.adblock.FilterRepository
 import com.moddingforge.truetube.playback.PlaybackConnector
 import com.moddingforge.truetube.playback.PlayerExtras
+import com.moddingforge.truetube.playback.DeArrowService
+import com.moddingforge.truetube.web.FilterRules
 import com.moddingforge.truetube.web.PlayerController
 import com.moddingforge.truetube.web.Role
 import com.moddingforge.truetube.web.WebViewHolder
@@ -53,6 +55,7 @@ class AppContainer(app: Application) {
     @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     val playbackConnector = PlaybackConnector(app, playerController, settings, appScope)
     val playerExtras = PlayerExtras(app, player, settings, json, appScope)
+    val deArrow = DeArrowService(listOf(feed, player), settings, json, appScope)
 
     init {
         // Settings that act on the pages live.
@@ -60,6 +63,12 @@ class AppContainer(app: Application) {
             settings.settings.map { it.adblockEnabled }.distinctUntilChanged().drop(1).collect {
                 feed.refreshAdblock()
                 player.refreshAdblock()
+            }
+        }
+        appScope.launch(Dispatchers.Main) {
+            settings.settings.map { FilterRules.from(it) }.distinctUntilChanged().drop(1).collect {
+                feed.refreshDataRules(reload = true)
+                player.refreshDataRules(reload = false)
             }
         }
         appScope.launch(Dispatchers.Main) {

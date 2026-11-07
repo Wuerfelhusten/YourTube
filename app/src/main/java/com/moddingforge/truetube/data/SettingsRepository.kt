@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -40,6 +41,16 @@ data class AppSettings(
     val sponsorBlock: Boolean = true,
     val sponsorCategories: Set<String> = setOf("sponsor", "selfpromo", "interaction"),
     val returnDislikes: Boolean = true,
+    // data-layer feed filters (05-data-filter.js) + DeArrow
+    val filterShorts: Boolean = false,
+    val filterPosts: Boolean = false,
+    val filterMixes: Boolean = false,
+    val filterWatched: Boolean = false,
+    /** Hide videos shorter than this (seconds); 0 = off. */
+    val filterMinDuration: Int = 0,
+    /** Hide videos whose title or channel contains one of these (one per line, case-insensitive). */
+    val filterKeywords: String = "",
+    val deArrow: Boolean = false,
 )
 
 private val Context.settingsStore by preferencesDataStore(name = "settings")
@@ -68,6 +79,13 @@ class SettingsRepository(context: Context, private val scope: CoroutineScope) {
         val sponsorBlock = booleanPreferencesKey("sponsorblock")
         val sponsorCategories = stringSetPreferencesKey("sponsorblock_categories")
         val ryd = booleanPreferencesKey("return_dislikes")
+        val fShorts = booleanPreferencesKey("filter_shorts")
+        val fPosts = booleanPreferencesKey("filter_posts")
+        val fMixes = booleanPreferencesKey("filter_mixes")
+        val fWatched = booleanPreferencesKey("filter_watched")
+        val fMinDur = intPreferencesKey("filter_min_duration")
+        val fKeywords = stringPreferencesKey("filter_keywords")
+        val deArrow = booleanPreferencesKey("dearrow")
     }
 
     private fun Preferences.toSettings() = AppSettings(
@@ -86,6 +104,13 @@ class SettingsRepository(context: Context, private val scope: CoroutineScope) {
         sponsorBlock = this[Keys.sponsorBlock] ?: true,
         sponsorCategories = this[Keys.sponsorCategories] ?: setOf("sponsor", "selfpromo", "interaction"),
         returnDislikes = this[Keys.ryd] ?: true,
+        filterShorts = this[Keys.fShorts] ?: false,
+        filterPosts = this[Keys.fPosts] ?: false,
+        filterMixes = this[Keys.fMixes] ?: false,
+        filterWatched = this[Keys.fWatched] ?: false,
+        filterMinDuration = this[Keys.fMinDur] ?: 0,
+        filterKeywords = this[Keys.fKeywords] ?: "",
+        deArrow = this[Keys.deArrow] ?: false,
     )
 
     private val initial: AppSettings = runBlocking { store.data.first().toSettings() }
@@ -114,6 +139,13 @@ class SettingsRepository(context: Context, private val scope: CoroutineScope) {
                 p[Keys.sponsorBlock] = s.sponsorBlock
                 p[Keys.sponsorCategories] = s.sponsorCategories
                 p[Keys.ryd] = s.returnDislikes
+                p[Keys.fShorts] = s.filterShorts
+                p[Keys.fPosts] = s.filterPosts
+                p[Keys.fMixes] = s.filterMixes
+                p[Keys.fWatched] = s.filterWatched
+                p[Keys.fMinDur] = s.filterMinDuration
+                p[Keys.fKeywords] = s.filterKeywords
+                p[Keys.deArrow] = s.deArrow
             }
         }
     }

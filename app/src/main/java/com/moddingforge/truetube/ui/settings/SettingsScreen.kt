@@ -33,6 +33,12 @@ import androidx.compose.material.icons.outlined.Headphones
 import androidx.compose.material.icons.outlined.PictureInPictureAlt
 import androidx.compose.material.icons.outlined.ScreenRotation
 import androidx.compose.material.icons.outlined.Category
+import androidx.compose.material.icons.outlined.Block
+import androidx.compose.material.icons.outlined.Forum
+import androidx.compose.material.icons.automirrored.outlined.QueueMusic
+import androidx.compose.material.icons.outlined.TaskAlt
+import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material.icons.outlined.Title
 import androidx.compose.material.icons.outlined.Coffee
 import androidx.compose.material.icons.outlined.FastForward
 import androidx.compose.material.icons.outlined.SignalCellularAlt
@@ -94,6 +100,7 @@ fun SettingsScreen(container: AppContainer, onClose: () -> Unit) {
     var updateRequested by remember { mutableStateOf(false) }
     var editCss by remember { mutableStateOf(false) }
     var picker by remember { mutableStateOf<Picker?>(null) }
+    var editKeywords by remember { mutableStateOf(false) }
     val s by container.settings.settings.collectAsStateWithLifecycle()
     val extras by container.filterRepository.optionalComponents.collectAsStateWithLifecycle()
 
@@ -196,6 +203,28 @@ fun SettingsScreen(container: AppContainer, onClose: () -> Unit) {
                 container.settings.update { it.copy(returnDislikes = v) }
             }
 
+            // --- feed filters (TrueTube data layer: removed before YouTube renders) ---
+            Section(stringResource(R.string.settings_feed))
+            SwitchItem(Icons.Outlined.Bolt, stringResource(R.string.filter_shorts), null, s.filterShorts) { v ->
+                container.settings.update { it.copy(filterShorts = v) }
+            }
+            SwitchItem(Icons.Outlined.Forum, stringResource(R.string.filter_posts), null, s.filterPosts) { v ->
+                container.settings.update { it.copy(filterPosts = v) }
+            }
+            SwitchItem(Icons.AutoMirrored.Outlined.QueueMusic, stringResource(R.string.filter_mixes), null, s.filterMixes) { v ->
+                container.settings.update { it.copy(filterMixes = v) }
+            }
+            SwitchItem(Icons.Outlined.TaskAlt, stringResource(R.string.filter_watched), stringResource(R.string.filter_watched_hint), s.filterWatched) { v ->
+                container.settings.update { it.copy(filterWatched = v) }
+            }
+            Item(Icons.Outlined.Timer, stringResource(R.string.filter_min_duration),
+                if (s.filterMinDuration <= 0) stringResource(R.string.filter_off) else durationLabel(s.filterMinDuration)) { picker = Picker.MIN_DURATION }
+            Item(Icons.Outlined.Block, stringResource(R.string.filter_keywords),
+                s.filterKeywords.lines().filter { it.isNotBlank() }.joinToString(", ").ifEmpty { stringResource(R.string.filter_off) }) { editKeywords = true }
+            SwitchItem(Icons.Outlined.Title, stringResource(R.string.settings_dearrow), stringResource(R.string.settings_dearrow_hint), s.deArrow) { v ->
+                container.settings.update { it.copy(deArrow = v) }
+            }
+
             // --- clean up YouTube (Brave's YouTube lists + TrueTube options) ---
             Section(stringResource(R.string.settings_cleanup))
             SwitchItem(Icons.Outlined.Bolt, stringResource(R.string.settings_shorts_tab), null, s.showShortsTab) { v ->
@@ -250,7 +279,31 @@ fun SettingsScreen(container: AppContainer, onClose: () -> Unit) {
         Picker.SPONSOR -> MultiChoiceDialog(stringResource(R.string.settings_sponsorblock_categories),
             WebViewHolder.SPONSOR_LABELS.keys.toList(), s.sponsorCategories, { stringResource(WebViewHolder.SPONSOR_LABELS.getValue(it)) },
             onDismiss = { picker = null }) { set -> container.settings.update { it.copy(sponsorCategories = set) }; picker = null }
+        Picker.MIN_DURATION -> ChoiceDialog(stringResource(R.string.filter_min_duration), MIN_DURATIONS, s.filterMinDuration,
+            { if (it <= 0) stringResource(R.string.filter_off) else durationLabel(it) },
+            onDismiss = { picker = null }) { v -> container.settings.update { it.copy(filterMinDuration = v) }; picker = null }
         null -> Unit
+    }
+
+    if (editKeywords) {
+        var text by remember { mutableStateOf(s.filterKeywords) }
+        AlertDialog(
+            onDismissRequest = { editKeywords = false },
+            title = { Text(stringResource(R.string.filter_keywords)) },
+            text = {
+                Column {
+                    Text(stringResource(R.string.filter_keywords_hint), style = MaterialTheme.typography.bodySmall)
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(value = text, onValueChange = { text = it }, modifier = Modifier.fillMaxWidth().height(160.dp))
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { container.settings.update { it.copy(filterKeywords = text) }; editKeywords = false }) {
+                    Text(stringResource(R.string.save))
+                }
+            },
+            dismissButton = { TextButton(onClick = { editKeywords = false }) { Text(stringResource(R.string.cancel)) } },
+        )
     }
 
     if (editCss) {
@@ -301,7 +354,14 @@ fun SettingsScreen(container: AppContainer, onClose: () -> Unit) {
 
 private const val KOFI_URL = "https://ko-fi.com/wuerfelhusten"
 
-private enum class Picker { QUALITY_WIFI, QUALITY_MOBILE, SPEED, SPONSOR }
+private enum class Picker { QUALITY_WIFI, QUALITY_MOBILE, SPEED, SPONSOR, MIN_DURATION }
+
+private val MIN_DURATIONS = listOf(0, 60, 120, 180, 300, 600)
+
+@Composable
+private fun durationLabel(seconds: Int): String =
+    if (seconds < 60) stringResource(R.string.filter_shorter_than_s, seconds)
+    else stringResource(R.string.filter_shorter_than_min, seconds / 60)
 
 private val QUALITIES = listOf("auto", "hd2160", "hd1440", "hd1080", "hd720", "large", "medium", "small", "tiny")
 private val SPEEDS = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f, 2.5f, 3f)
