@@ -47,6 +47,14 @@ sealed interface BridgeMessage {
         val duration: Double = 0.0,
     ) : BridgeMessage
 
+    /** navigator.share() from the page -> native share sheet. */
+    @Serializable @SerialName("share")
+    data class Share(val url: String = "", val title: String = "", val text: String = "") : BridgeMessage
+
+    /** The "TrueTube Settings" entry on YouTube's settings page was tapped. */
+    @Serializable @SerialName("open-settings")
+    data object OpenSettings : BridgeMessage
+
     /** Player: the page entered/left fullscreen (YouTube's fullscreen button). */
     @Serializable @SerialName("fullscreen")
     data class Fullscreen(val on: Boolean) : BridgeMessage

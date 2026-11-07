@@ -83,6 +83,8 @@ import com.moddingforge.truetube.R
 import com.moddingforge.truetube.data.SearchHistory
 import com.moddingforge.truetube.data.SearchSuggestions
 import androidx.compose.foundation.layout.asPaddingValues
+import com.moddingforge.truetube.AppContainer
+import com.moddingforge.truetube.ui.settings.SettingsScreen
 import com.moddingforge.truetube.ui.player.MiniPlayerHeight
 import com.moddingforge.truetube.ui.player.PlayerLayer
 import com.moddingforge.truetube.web.Page
@@ -100,12 +102,14 @@ import kotlinx.coroutines.delay
  */
 @Composable
 fun AppShell(
-    controller: PlayerController,
+    container: AppContainer,
     activity: ComponentActivity,
     suggestions: SearchSuggestions,
     history: SearchHistory,
 ) {
+    val controller = container.playerController
     val holder = controller.feed
+    val settingsOpen by controller.settingsOpen.collectAsStateWithLifecycle()
     val state by holder.state.collectAsStateWithLifecycle()
     val playerMode by controller.mode.collectAsStateWithLifecycle()
     val page = if (state.url.isEmpty()) Page.HOME else Page.of(state.url)
@@ -137,6 +141,7 @@ fun AppShell(
                     onSearch = { searchOpen = true },
                     onBack = { holder.goBack() },
                     onReload = holder::reload,
+                    onSettings = controller::openSettings,
                 )
             } else {
                 Spacer(Modifier.fillMaxWidth().windowInsetsTopHeight(WindowInsets.statusBars))
@@ -176,6 +181,10 @@ fun AppShell(
             onClose = { searchOpen = false },
         )
     }
+
+    if (settingsOpen) SettingsScreen(container, onClose = controller::closeSettings)
+
+    LinkHint()
     }
 }
 
@@ -233,6 +242,7 @@ private fun TopBar(
     onSearch: () -> Unit,
     onBack: () -> Unit,
     onReload: () -> Unit,
+    onSettings: () -> Unit,
 ) {
     var menu by remember { mutableStateOf(false) }
     Row(
@@ -273,6 +283,7 @@ private fun TopBar(
         Box {
             IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, stringResource(R.string.more)) }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                DropdownMenuItem(text = { Text(stringResource(R.string.settings_title)) }, onClick = { menu = false; onSettings() })
                 DropdownMenuItem(text = { Text(stringResource(R.string.reload)) }, onClick = { menu = false; onReload() })
             }
         }

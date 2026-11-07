@@ -82,6 +82,62 @@ object UrlRouter {
         return false
     }
 
+    /** Tracking parameters YouTube adds to shared links. */
+    private val trackingParams = setOf("si", "feature", "pp", "app", "ab_channel", "embeds_referring_euri", "source_ve_path")
+
+    /**
+     * Turns a link coming from outside (other apps, share sheet) into the m.youtube URL TrueTube
+     * loads, or null if it isn't a YouTube link. Handles youtu.be, www/music/youtube.com,
+     * /live/ID, /embed/ID, /v/ID, vnd.youtube:ID and strips tracking parameters.
+     */
+    fun normalizeIncoming(raw: String): String? {
+        val uri = raw.trim().toUri()
+        when (uri.scheme?.lowercase()) {
+            "vnd.youtube" -> {
+                val id = (uri.schemeSpecificPart ?: "").trimStart('/').substringBefore('?').ifEmpty { return null }
+                return watchUrl(id, uri.getQueryParameter("t"))
+            }
+            "http", "https" -> Unit
+            else -> return null
+        }
+        val host = uri.host?.lowercase() ?: return null
+        if (host == "youtu.be") {
+            val id = uri.pathSegments.firstOrNull() ?: return HOME
+            return watchUrl(id, uri.getQueryParameter("t"))
+        }
+        if (!isYouTube(host) && host != "youtube-nocookie.com" && !host.endsWith(".youtube-nocookie.com")) return null
+
+        val segments = uri.pathSegments
+        // /live/ID, /embed/ID, /v/ID -> regular watch page
+        if (segments.size >= 2 && segments[0] in setOf("live", "embed", "v")) {
+            return watchUrl(segments[1], uri.getQueryParameter("t") ?: uri.getQueryParameter("start"))
+        }
+        val clean = android.net.Uri.Builder().scheme("https").authority("m.youtube.com").path(uri.path ?: "/")
+        for (name in uri.queryParameterNames) {
+            if (name in trackingParams) continue
+            for (value in uri.getQueryParameters(name)) clean.appendQueryParameter(name, value)
+        }
+        return clean.build().toString()
+    }
+
+    /** First YouTube link inside a shared text ("Check this out: https://youtu.be/..."). */
+    fun findYouTubeLink(text: String): String? =
+        Regex("""(https?://|vnd\.youtube:)\S+""").findAll(text).map { it.value.trimEnd('.', ',', ')', '!', '"') }
+            .firstNotNullOfOrNull { normalizeIncoming(it) }
+
+    /** Clean, shareable link for a page (youtu.be for videos, like the official app). */
+    fun shareUrl(url: String): String {
+        // YouTube may already hand us youtu.be/...?si=... - normalize first, then build the short link.
+        val normalized = normalizeIncoming(url) ?: url
+        val uri = normalized.toUri()
+        val id = uri.getQueryParameter("v")
+        if (Page.of(normalized) == Page.WATCH && id != null) {
+            val t = uri.getQueryParameter("t")
+            return "https://youtu.be/$id" + if (t != null) "?t=$t" else ""
+        }
+        return normalized.replace("://m.youtube.com", "://www.youtube.com")
+    }
+
     fun watchUrl(videoId: String, start: String? = null): String =
         buildString {
             append("https://m.youtube.com/watch?v=").append(Uri.encode(videoId))

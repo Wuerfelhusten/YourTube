@@ -57,6 +57,22 @@ class PlayerController(
             minimize()
         }
         player.onFullscreen = { on -> setFullscreen(on, explicit = true) }
+        feed.onOpenSettings = ::openSettings
+        player.onOpenSettings = ::openSettings
+    }
+
+    /** TrueTube's native settings screen is shown. */
+    private val _settingsOpen = MutableStateFlow(false)
+    val settingsOpen: StateFlow<Boolean> = _settingsOpen.asStateFlow()
+
+    fun openSettings() {
+        if (_fullscreen.value) setFullscreen(false, explicit = true)
+        if (_mode.value == PlayerMode.EXPANDED) minimize()
+        _settingsOpen.value = true
+    }
+
+    fun closeSettings() {
+        _settingsOpen.value = false
     }
 
     /** Entry point for URLs from outside (intents, debug): watch pages go to the player. */

@@ -11,6 +11,18 @@
   if (!TT) return;
   const role = TT_CONFIG.role;
 
+  // Web Share API (missing in WebView): YouTube's "Share" then opens the native share sheet,
+  // like in the official app, instead of its web-only panel.
+  try {
+    const share = (data) => {
+      data = data || {};
+      TT.post('share', { url: data.url || location.href, title: data.title || document.title || '', text: data.text || '' });
+      return Promise.resolve();
+    };
+    Object.defineProperty(navigator, 'share', { value: share, configurable: true });
+    Object.defineProperty(navigator, 'canShare', { value: () => true, configurable: true });
+  } catch (e) { /* ignore */ }
+
   document.addEventListener('click', (e) => {
     const a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
     if (!a) return;

@@ -19,6 +19,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import com.moddingforge.truetube.R
 import com.moddingforge.truetube.web.PlayerMode
+import com.moddingforge.truetube.web.UrlRouter
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -56,10 +57,12 @@ class MainActivity : ComponentActivity() {
         val history = SearchHistory(this)
         setContent {
             TrueTubeTheme {
-                AppShell(container.playerController, this, suggestions, history)
+                AppShell(container, this, suggestions, history)
             }
         }
         handleDebugIntent(intent)
+        // A fresh launch from a link; on recreation (e.g. after process death) the intent is old.
+        if (savedInstanceState == null) handleLinkIntent(intent)
 
         // Fullscreen toggled by the user forces an orientation (see PlayerController).
         lifecycleScope.launch {
@@ -197,6 +200,19 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleDebugIntent(intent)
+        handleLinkIntent(intent)
+    }
+
+    /** YouTube link opened from another app, or text shared to TrueTube. */
+    private fun handleLinkIntent(intent: Intent?) {
+        intent ?: return
+        val url = when (intent.action) {
+            Intent.ACTION_VIEW -> intent.dataString?.let(UrlRouter::normalizeIncoming)
+            Intent.ACTION_SEND -> intent.getStringExtra(Intent.EXTRA_TEXT)?.let(UrlRouter::findYouTubeLink)
+            else -> null
+        } ?: return
+        android.util.Log.i("TT.Links", "open ${intent.action}: $url")
+        window.decorView.post { container.playerController.navigate(url) }
     }
 
     override fun onStart() {

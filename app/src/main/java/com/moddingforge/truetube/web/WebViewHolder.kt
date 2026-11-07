@@ -2,6 +2,8 @@ package com.moddingforge.truetube.web
 
 import android.app.Activity
 import android.app.Application
+import android.content.ComponentName
+import android.content.Intent
 import android.content.Context
 import android.content.MutableContextWrapper
 import android.graphics.Color
@@ -89,6 +91,22 @@ class WebViewHolder(
     var onOpenVideo: (String) -> Unit = {}
     var onOpenInFeed: (String) -> Unit = {}
     var onFullscreen: (Boolean) -> Unit = {}
+    var onOpenSettings: () -> Unit = {}
+
+    /** Native share sheet with a clean link (youtu.be for videos, no tracking parameters). */
+    fun share(url: String?, title: String?) {
+        val link = UrlRouter.shareUrl(url?.takeIf { it.isNotBlank() } ?: _state.value.url)
+        val send = Intent(Intent.ACTION_SEND)
+            .setType("text/plain")
+            .putExtra(Intent.EXTRA_TEXT, link)
+            .apply { if (!title.isNullOrBlank()) putExtra(Intent.EXTRA_SUBJECT, title.removeSuffix(" - YouTube")) }
+        val chooser = Intent.createChooser(send, null)
+            // Don't offer "share to TrueTube" while sharing from TrueTube.
+            .putExtra(Intent.EXTRA_EXCLUDE_COMPONENTS, arrayOf(ComponentName(app, "com.moddingforge.truetube.ui.MainActivity")))
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        Log.i(TAG, "[$role] share $link")
+        runCatching { contextWrapper.startActivity(chooser) }.onFailure { Log.w(TAG, "share failed", it) }
+    }
 
     val bridge = Bridge(json, ::onBridgeMessage)
     val injector = ScriptInjector(app.assets, json, InjectConfig(version = BuildConfig.VERSION_CODE, debug = BuildConfig.DEBUG, role = role.name.lowercase()))
@@ -418,6 +436,8 @@ class WebViewHolder(
                 enforceRole(msg.url)
             }
             is BridgeMessage.Fullscreen -> onFullscreen(msg.on)
+            is BridgeMessage.Share -> share(msg.url, msg.title)
+            BridgeMessage.OpenSettings -> onOpenSettings()
             is BridgeMessage.OpenVideo -> onOpenVideo(msg.url)
             is BridgeMessage.OpenInFeed -> onOpenInFeed(msg.url)
             is BridgeMessage.VideoStateMsg -> _video.value = VideoState(
