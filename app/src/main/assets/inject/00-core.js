@@ -64,6 +64,7 @@ if (isTop) {
     if (key === last) return;
     last = key;
     TT.post('navigation', { url, title });
+    window.dispatchEvent(new CustomEvent('tt:navigate', { detail: { url } }));
   };
   const schedule = () => {
     clearTimeout(timer);

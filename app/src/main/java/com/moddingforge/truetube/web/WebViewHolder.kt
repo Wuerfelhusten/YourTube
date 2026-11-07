@@ -117,6 +117,38 @@ class WebViewHolder(
         }
     }
 
+    /**
+     * Bottom tab pressed. Same tab again: scroll to top, or reload if already at the top
+     * (like the official app). Otherwise navigate in-page via m.youtube's pivot bar.
+     */
+    fun selectTab(tab: Tab) {
+        val wv = webView ?: return
+        val current = Page.of(_state.value.url)
+        when {
+            current == tab.page && wv.scrollY > 0 -> bridge.send(BridgeCommand.ScrollTop)
+            current == tab.page -> wv.reload()
+            _state.value.bridgeReady && UrlRouter.isYouTube(android.net.Uri.parse(_state.value.url).host.orEmpty()) ->
+                bridge.send(BridgeCommand.NavTab(tab.pivotIndex, tab.url))
+            else -> load(tab.url)
+        }
+    }
+
+    fun reload() {
+        webView?.reload()
+    }
+
+    fun search(query: String) {
+        load("https://m.youtube.com/results?search_query=" + android.net.Uri.encode(query.trim()))
+    }
+
+    /** Debug builds: evaluate JS in the page and log the (JSON) result in chunks under TT.Eval. */
+    fun debugEval(js: String) {
+        if (!BuildConfig.DEBUG) return
+        webView?.evaluateJavascript(js) { result ->
+            result.orEmpty().chunked(3000).forEachIndexed { i, part -> Log.i("TT.Eval", "[$i] $part") }
+        }
+    }
+
     /** @return true if the WebView navigated back. */
     fun goBack(): Boolean {
         val wv = webView ?: return false

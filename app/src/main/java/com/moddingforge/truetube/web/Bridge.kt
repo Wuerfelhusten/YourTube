@@ -39,6 +39,13 @@ sealed interface BridgeCommand {
     @Serializable @SerialName("ping")
     data class Ping(val nonce: Long) : BridgeCommand
 
+    /** Switch tab via m.youtube's (hidden) pivot bar - fast in-page navigation. */
+    @Serializable @SerialName("nav-tab")
+    data class NavTab(val index: Int, val url: String) : BridgeCommand
+
+    @Serializable @SerialName("scroll-top")
+    data object ScrollTop : BridgeCommand
+
     /** Generic hide selectors the engine returned for reported classes/ids. */
     @Serializable @SerialName("cosmetic-hide")
     data class CosmeticHide(val selectors: List<String>) : BridgeCommand

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="back">Back</string>
+    <string name="search">Search</string>
+    <string name="search_hint">Search YouTube</string>
+    <string name="clear">Clear</string>
+    <string name="remove_from_history">Remove from history</string>
+    <string name="use_suggestion">Use suggestion</string>
+    <string name="more">More options</string>
+    <string name="reload">Reload</string>
+    <string name="tab_home">Home</string>
+    <string name="tab_shorts">Shorts</string>
+    <string name="tab_subscriptions">Subscriptions</string>
+    <string name="tab_you">You</string>
+</resources>
