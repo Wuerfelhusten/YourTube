@@ -134,6 +134,7 @@ dependencies {
     implementation(libs.androidx.work.runtime)
     implementation(libs.androidx.swiperefreshlayout)
     implementation(libs.androidx.media3.session)
+    implementation(libs.androidx.datastore.preferences)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

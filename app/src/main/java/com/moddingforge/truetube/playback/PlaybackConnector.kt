@@ -7,33 +7,38 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
+import com.moddingforge.truetube.data.SettingsRepository
 import com.moddingforge.truetube.web.PlayerController
 import com.moddingforge.truetube.web.PlayerMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 /**
  * Connects to [PlaybackService] while a video is open (mini or expanded), which creates the
  * media session and lets Media3 show the notification / go foreground while playing.
- * Also keeps the player WebView running in the background during that time.
+ * Also keeps the player WebView running in the background during that time - unless
+ * "Background playback" is switched off in TrueTube Settings.
  */
 @UnstableApi
 class PlaybackConnector(
     private val context: Context,
     private val controller: PlayerController,
+    settings: SettingsRepository,
     scope: CoroutineScope,
 ) {
     private var future: ListenableFuture<MediaController>? = null
 
     init {
         scope.launch(Dispatchers.Main) {
-            controller.mode.map { it != PlayerMode.HIDDEN }.distinctUntilChanged().collect { active ->
-                controller.player.keepRunningInBackground = active
-                if (active) connect() else disconnect()
-            }
+            combine(controller.mode, settings.settings) { mode, s -> (mode != PlayerMode.HIDDEN) to s.backgroundPlayback }
+                .distinctUntilChanged()
+                .collect { (active, background) ->
+                    controller.player.keepRunningInBackground = active && background
+                    if (active) connect() else disconnect()
+                }
         }
     }
 

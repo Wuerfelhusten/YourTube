@@ -1,6 +1,7 @@
 package com.moddingforge.truetube.web
 
 import android.util.Log
+import com.moddingforge.truetube.data.SettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,6 +25,7 @@ enum class OrientationLock { NONE, LANDSCAPE, PORTRAIT }
 class PlayerController(
     val feed: WebViewHolder,
     val player: WebViewHolder,
+    private val settings: SettingsRepository,
 ) {
     private val _mode = MutableStateFlow(PlayerMode.HIDDEN)
     val mode: StateFlow<PlayerMode> = _mode.asStateFlow()
@@ -40,12 +42,13 @@ class PlayerController(
 
     fun setPip(on: Boolean) {
         Log.i(TAG, "pip $on")
+        player.pipActive = on
         _pip.value = on
     }
 
     /** Leaving the app with an open, playing video -> picture-in-picture (official app). */
     val canEnterPip: Boolean
-        get() = _mode.value == PlayerMode.EXPANDED && player.video.value.playing
+        get() = settings.current.autoPip && _mode.value == PlayerMode.EXPANDED && player.video.value.playing
 
     fun pause() = player.send(BridgeCommand.PlayerControl("pause"))
 
@@ -123,6 +126,8 @@ class PlayerController(
 
     /** The screen actually rotated. */
     fun onRotated(landscape: Boolean) {
+        // "Fullscreen when rotating" switched off: rotating only leaves fullscreen.
+        if (landscape && !settings.current.rotateToFullscreen) return
         if (_mode.value == PlayerMode.EXPANDED || !landscape) setFullscreen(landscape, explicit = false)
     }
 

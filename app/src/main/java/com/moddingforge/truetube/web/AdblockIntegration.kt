@@ -31,6 +31,8 @@ import kotlinx.serialization.json.put
 class AdblockIntegration(
     private val repo: FilterRepository,
     private val json: Json,
+    /** "Ad blocker" switch in TrueTube Settings. */
+    private val enabled: () -> Boolean = { true },
 ) {
     /** Main-frame URL, used as source URL for third-party checks. Written on the UI thread. */
     @Volatile var pageUrl: String = UrlRouter.HOME
@@ -41,11 +43,21 @@ class AdblockIntegration(
     private val handlers = mutableListOf<ScriptHandler>()
     private val exceptionsByHost = ConcurrentHashMap<String, Set<String>>()
 
-    private val engine: AdblockEngine? get() = repo.engine
+    private val engine: AdblockEngine? get() = if (enabled()) repo.engine else null
+
+    /** Removes the per-host scripts (ad blocker switched off). Takes effect on the next page load. */
+    fun uninstall() {
+        handlers.forEach { it.remove() }
+        reset()
+    }
 
     /** Registers the per-host scriptlet/cosmetic scripts. Call on the UI thread. */
     fun install(webView: WebView, engine: AdblockEngine) {
         if (!WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) return
+        if (!enabled()) {
+            uninstall()
+            return
+        }
         if (installedFor?.get() === webView && installedEngine === engine) return
         installedFor = java.lang.ref.WeakReference(webView)
         installedEngine = engine

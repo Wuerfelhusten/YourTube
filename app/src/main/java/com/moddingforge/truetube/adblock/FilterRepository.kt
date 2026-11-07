@@ -13,6 +13,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
+import com.moddingforge.truetube.data.SettingsRepository
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -69,9 +73,32 @@ class FilterRepository(
     private val json: Json,
     private val scope: CoroutineScope,
     private val debug: Boolean,
+    private val settings: SettingsRepository,
 ) {
     private val _state = MutableStateFlow<EngineState>(EngineState.Loading)
     val state: StateFlow<EngineState> = _state.asStateFlow()
+
+    /** Brave components that are off by default (YouTube clean-up lists), for the settings screen. */
+    private val _optionalComponents = MutableStateFlow<List<SnapshotManifest.Component>>(emptyList())
+    val optionalComponents: StateFlow<List<SnapshotManifest.Component>> = _optionalComponents.asStateFlow()
+
+    /** Which components the user wants: Brave's defaults (cookie blocker optional) + chosen extras. */
+    private data class Selection(val cookies: Boolean, val extras: Set<String>)
+
+    private fun selection() = settings.current.let { Selection(it.cookieNoticeBlocking, it.extraLists) }
+
+    private fun isCookieComponent(c: SnapshotManifest.Component) = c.title.contains("Cookie notice", ignoreCase = true)
+
+    init {
+        // Rebuild when the component selection changes in the settings.
+        scope.launch {
+            settings.settings.map { Selection(it.cookieNoticeBlocking, it.extraLists) }.distinctUntilChanged().drop(1).collect {
+                Log.i(TAG, "Component selection changed: $it - rebuilding")
+                state.first { s -> s !is EngineState.Loading }
+                buildMutex.withLock { publish(safeBuild(preferCache = true)) }
+            }
+        }
+    }
 
     /** The current engine, or null while loading / unavailable. Cheap; safe from any thread. */
     val engine: AdblockEngine? get() = (_state.value as? EngineState.Ready)?.engine
@@ -125,8 +152,12 @@ class FilterRepository(
     private data class EffectiveList(val url: String, val path: String, val mask: Int)
 
     /** Enabled lists, each pointing at the downloaded copy if there is one, else the snapshot copy. */
-    private fun effectiveLists(manifest: SnapshotManifest): List<EffectiveList> =
-        manifest.components.filter { it.defaultEnabled }
+    private fun effectiveLists(manifest: SnapshotManifest): List<EffectiveList> {
+        val sel = selection()
+        return manifest.components
+            .filter { c ->
+                if (c.defaultEnabled) !(isCookieComponent(c) && !sel.cookies) else c.uuid in sel.extras
+            }
             .flatMap { comp ->
                 comp.lists.map { ref ->
                     val file = updater.fileFor(ref.url) ?: File(snapshotDir, ref.file)
@@ -134,9 +165,11 @@ class FilterRepository(
                 }
             }
             .distinctBy { it.url }
+    }
 
     private suspend fun build(preferCache: Boolean): EngineState = withContext(Dispatchers.IO) {
         val manifest = unpackSnapshot()
+        _optionalComponents.value = manifest.components.filter { !it.defaultEnabled }
         val lists = effectiveLists(manifest)
         val resources = File(snapshotDir, manifest.resources)
         val key = cacheKey(lists, resources)

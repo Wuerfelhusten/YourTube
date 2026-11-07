@@ -22,6 +22,7 @@ import androidx.webkit.WebViewFeature
 import com.moddingforge.truetube.BuildConfig
 import com.moddingforge.truetube.adblock.EngineState
 import com.moddingforge.truetube.adblock.FilterRepository
+import com.moddingforge.truetube.data.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -77,6 +78,7 @@ class WebViewHolder(
     private val filters: FilterRepository,
     scope: CoroutineScope,
     val role: Role,
+    private val settings: SettingsRepository,
 ) {
     private val contextWrapper = MutableContextWrapper(app)
     private var webView: WebView? = null
@@ -110,7 +112,25 @@ class WebViewHolder(
 
     val bridge = Bridge(json, ::onBridgeMessage)
     val injector = ScriptInjector(app.assets, json, InjectConfig(version = BuildConfig.VERSION_CODE, debug = BuildConfig.DEBUG, role = role.name.lowercase()))
-    val adblock = AdblockIntegration(filters, json)
+    val adblock = AdblockIntegration(filters, json, enabled = { settings.current.adblockEnabled })
+
+    /** Ad blocker switched on/off: (un)register Brave's page scripts and reload so it applies. */
+    fun refreshAdblock() {
+        val wv = webView ?: return
+        val engine = filters.engine
+        if (settings.current.adblockEnabled && engine != null) adblock.install(wv, engine) else adblock.uninstall()
+        if (wv.url != null && wv.url != "about:blank") wv.reload()
+    }
+
+    /** User CSS (hide comments, custom CSS from settings); re-applied on every page. */
+    var userCss: String = ""
+        set(value) {
+            field = value
+            bridge.send(BridgeCommand.UserCss(value))
+        }
+
+    /** Player: the activity is in picture-in-picture; keeps Chromium from suspending the video. */
+    var pipActive = false
 
     private var pingSentAt = 0L
 
@@ -294,7 +314,7 @@ class WebViewHolder(
     var keepRunningInBackground = false
 
     fun onStop() {
-        if (!keepRunningInBackground) webView?.onPause()
+        if (!keepRunningInBackground && !pipActive) webView?.onPause()
         CookieManager.getInstance().flush()
     }
 
@@ -312,7 +332,7 @@ class WebViewHolder(
         hookServiceWorker()
         val context: Context = contextWrapper
         return TrueWebView(context).apply wv@{
-            keepVisible = { keepRunningInBackground }
+            keepVisible = { keepRunningInBackground || pipActive }
             layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             setBackgroundColor(Color.TRANSPARENT)
             configureSettings(settings)
@@ -407,6 +427,7 @@ class WebViewHolder(
                 _state.update { it.copy(bridgeReady = true) }
                 pingSentAt = System.currentTimeMillis()
                 bridge.send(BridgeCommand.Ping(pingSentAt))
+                if (userCss.isNotEmpty()) bridge.send(BridgeCommand.UserCss(userCss))
                 if (role == Role.PLAYER) {
                     bridge.send(BridgeCommand.PlayerMini(miniMode))
                     if (fullscreenMode) bridge.send(BridgeCommand.PlayerFullscreen(true))

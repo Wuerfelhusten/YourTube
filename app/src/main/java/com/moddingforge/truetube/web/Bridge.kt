@@ -77,6 +77,10 @@ sealed interface BridgeCommand {
     @Serializable @SerialName("scroll-top")
     data object ScrollTop : BridgeCommand
 
+    /** CSS from TrueTube Settings (hide comments, custom CSS). Empty = remove. */
+    @Serializable @SerialName("user-css")
+    data class UserCss(val css: String) : BridgeCommand
+
     /** Player: play | pause | toggle | seek (with [position] in seconds) */
     @Serializable @SerialName("player-control")
     data class PlayerControl(val action: String, val position: Double = 0.0) : BridgeCommand

@@ -166,5 +166,17 @@
       else location.href = cmd.url;
     });
     TT.on('scroll-top', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+
+    // User CSS from TrueTube Settings (hide comments, custom CSS). textContent is fine under
+    // YouTube's Trusted Types policy (only HTML/script sinks are restricted).
+    let userStyle = null;
+    TT.on('user-css', (cmd) => {
+      if (!userStyle || !userStyle.isConnected) {
+        userStyle = document.createElement('style');
+        userStyle.id = 'tt-user-css';
+        (document.head || document.documentElement).appendChild(userStyle);
+      }
+      userStyle.textContent = cmd.css || '';
+    });
   }
 })();

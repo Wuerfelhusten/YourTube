@@ -110,6 +110,7 @@ fun AppShell(
     val controller = container.playerController
     val holder = controller.feed
     val settingsOpen by controller.settingsOpen.collectAsStateWithLifecycle()
+    val appSettings by container.settings.settings.collectAsStateWithLifecycle()
     val state by holder.state.collectAsStateWithLifecycle()
     val playerMode by controller.mode.collectAsStateWithLifecycle()
     val page = if (state.url.isEmpty()) Page.HOME else Page.of(state.url)
@@ -130,7 +131,7 @@ fun AppShell(
     // No Surface in this tree, so set the content color explicitly (else text/icons stay black in dark mode).
     CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
     Row(Modifier.fillMaxSize().background(chromeBg)) {
-        if (wide && page.showsTabBar) TabRail(page, onSelect = holder::selectTab)
+        if (wide && page.showsTabBar) TabRail(page, appSettings.showShortsTab, onSelect = holder::selectTab)
 
         Column(Modifier.weight(1f).fillMaxHeight()) {
             if (page.showsTopBar) {
@@ -158,7 +159,7 @@ fun AppShell(
             }
 
             if (tabBarShown) {
-                TabBar(page, onSelect = holder::selectTab)
+                TabBar(page, appSettings.showShortsTab, onSelect = holder::selectTab)
             } else {
                 Spacer(Modifier.fillMaxWidth().windowInsetsBottomHeight(WindowInsets.navigationBars))
             }
@@ -306,12 +307,12 @@ private val TabBarHeight = 56.dp
 
 /** Compact bottom bar like the official app (56dp, small labels), not the 80dp Material bar. */
 @Composable
-private fun TabBar(page: Page, onSelect: (Tab) -> Unit) {
+private fun TabBar(page: Page, showShorts: Boolean, onSelect: (Tab) -> Unit) {
     val selected = Tab.of(page)
     Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)) {
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
         Row(Modifier.fillMaxWidth().navigationBarsPadding().height(TabBarHeight)) {
-            for (spec in tabSpecs()) {
+            for (spec in tabSpecs().filter { showShorts || it.tab != Tab.SHORTS }) {
                 val sel = spec.tab == selected
                 Column(
                     Modifier.weight(1f).fillMaxHeight().clickable { onSelect(spec.tab) },
@@ -328,10 +329,10 @@ private fun TabBar(page: Page, onSelect: (Tab) -> Unit) {
 }
 
 @Composable
-private fun TabRail(page: Page, onSelect: (Tab) -> Unit) {
+private fun TabRail(page: Page, showShorts: Boolean, onSelect: (Tab) -> Unit) {
     val selected = Tab.of(page)
     NavigationRail(containerColor = MaterialTheme.colorScheme.surface, modifier = Modifier.statusBarsPadding()) {
-        for (spec in tabSpecs()) {
+        for (spec in tabSpecs().filter { showShorts || it.tab != Tab.SHORTS }) {
             NavigationRailItem(
                 selected = spec.tab == selected,
                 onClick = { onSelect(spec.tab) },

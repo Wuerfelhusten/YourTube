@@ -87,7 +87,11 @@ class MainActivity : ComponentActivity() {
 
         // PiP parameters follow the player: auto-enter only while a video plays in the expanded player.
         lifecycleScope.launch {
-            combine(container.playerController.mode, container.player.video.map { it.playing }.distinctUntilChanged()) { _, _ -> }
+            combine(
+                container.playerController.mode,
+                container.player.video.map { it.playing }.distinctUntilChanged(),
+                container.settings.settings.map { it.autoPip }.distinctUntilChanged(),
+            ) { _, _, _ -> }
                 .collect { updatePipParams() }
         }
 
@@ -224,6 +228,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         orientationListener.disable()
+        // "Background playback" off: leaving the app pauses the video, like the official app without Premium.
+        if (!container.settings.current.backgroundPlayback && !isInPictureInPictureMode) container.playerController.pause()
         container.feed.onStop()
         container.player.onStop()
         super.onStop()
