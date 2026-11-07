@@ -43,6 +43,10 @@ class TrueWebViewClient(private val holder: WebViewHolder) : WebViewClient() {
         holder.onPageStarted(view, url)
     }
 
+    override fun onPageFinished(view: WebView, url: String) {
+        holder.onPageFinished(url)
+    }
+
     override fun doUpdateVisitedHistory(view: WebView, url: String, isReload: Boolean) {
         holder.onHistoryChanged(view, url)
     }

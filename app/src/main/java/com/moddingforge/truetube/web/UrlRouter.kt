@@ -8,6 +8,11 @@ import androidx.core.net.toUri
 object UrlRouter {
     const val HOME = "https://m.youtube.com/"
 
+    /** Same entry point m.youtube's own "Sign in" button uses; lands back on m.youtube.com. */
+    const val SIGN_IN = "https://accounts.google.com/ServiceLogin?service=youtube&uilel=3&passive=true" +
+        "&continue=https%3A%2F%2Fwww.youtube.com%2Fsignin%3Faction_handle_signin%3Dtrue%26app%3Dm" +
+        "%26next%3Dhttps%253A%252F%252Fm.youtube.com%252F"
+
     sealed interface Decision {
         /** Let the WebView load the URL as is. */
         data object InApp : Decision
@@ -70,6 +75,8 @@ object UrlRouter {
     private fun isGoogleAuthOrConsent(host: String, path: String): Boolean {
         if (host.startsWith("accounts.google.") || host.startsWith("consent.google.")) return true
         if (host == "accounts.youtube.com" || host == "consent.youtube.com") return true
+        // Account recovery / "verify it's you" interstitials during sign-in.
+        if (host == "gds.google.com" || (host == "myaccount.google.com" && path.startsWith("/signinoptions"))) return true
         // Some sign-in steps run on www.google.<tld>/accounts/... or /signin/...
         if (host.startsWith("www.google.") && (path.startsWith("/accounts") || path.startsWith("/signin"))) return true
         return false

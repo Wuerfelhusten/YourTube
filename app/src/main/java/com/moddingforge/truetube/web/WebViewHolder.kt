@@ -9,6 +9,7 @@ import android.util.Log
 import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.WebSettings
+import android.webkit.WebStorage
 import android.webkit.WebView
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewFeature
@@ -27,6 +28,8 @@ data class WebState(
     val progress: Int = 100,
     val canGoBack: Boolean = false,
     val bridgeReady: Boolean = false,
+    /** A Google account is signed in to YouTube (based on the session cookies). */
+    val signedIn: Boolean = false,
     /** Round-trip time of the last ping, -1 if none yet. */
     val bridgePingMs: Long = -1,
     /** Bumped when the WebView had to be recreated (renderer crash). */
@@ -85,6 +88,33 @@ class WebViewHolder(
 
     fun onStart() {
         webView?.onResume()
+        refreshSignIn()
+    }
+
+    /** Opens Google's sign-in page for YouTube; Google redirects back to m.youtube.com afterwards. */
+    fun signIn() {
+        load(UrlRouter.SIGN_IN)
+    }
+
+    /** Removes all cookies and web storage (= signs out) and reloads the start page. */
+    fun signOut() {
+        CookieManager.getInstance().removeAllCookies {
+            CookieManager.getInstance().flush()
+            WebStorage.getInstance().deleteAllData()
+            refreshSignIn()
+            load(UrlRouter.HOME)
+        }
+    }
+
+    /** Re-reads the YouTube session cookies. Cheap; called after every page load / navigation. */
+    fun refreshSignIn() {
+        val signedIn = Account.isSignedIn(CookieManager.getInstance())
+        if (signedIn != _state.value.signedIn) {
+            Log.i(TAG, if (signedIn) "signed in" else "signed out")
+            _state.update { it.copy(signedIn = signedIn) }
+            // Persist the fresh session immediately instead of waiting for onStop.
+            CookieManager.getInstance().flush()
+        }
     }
 
     fun onStop() {
@@ -144,6 +174,11 @@ class WebViewHolder(
         injector.injectFallback(view)
     }
 
+    internal fun onPageFinished(url: String) {
+        if (BuildConfig.DEBUG) Log.d(TAG, "page finished: $url")
+        refreshSignIn()
+    }
+
     internal fun onHistoryChanged(view: WebView, url: String) {
         _state.update { it.copy(url = url, canGoBack = view.canGoBack()) }
     }
@@ -189,6 +224,7 @@ class WebViewHolder(
             is BridgeMessage.Navigation -> {
                 Log.i(Bridge.TAG, "navigation ${msg.url} | ${msg.title}")
                 _state.update { it.copy(url = msg.url, title = msg.title, canGoBack = webView?.canGoBack() ?: false) }
+                refreshSignIn()
             }
             is BridgeMessage.Log -> Log.println(
                 when (msg.level) { "error" -> Log.ERROR; "warn" -> Log.WARN; "debug" -> Log.DEBUG; else -> Log.INFO },
@@ -200,6 +236,16 @@ class WebViewHolder(
     companion object {
         private const val TAG = "TT.WebView"
     }
+}
+
+/** Sign-in state derived from Google's session cookies on youtube.com. */
+object Account {
+    private const val COOKIE_URL = "https://www.youtube.com"
+    // SAPISID / __Secure-3PAPISID only exist for a signed-in Google session.
+    private val sessionCookie = Regex("""(^|;\s*)(SAPISID|__Secure-3PAPISID)=""")
+
+    fun isSignedIn(cookies: CookieManager): Boolean =
+        cookies.getCookie(COOKIE_URL)?.let { sessionCookie.containsMatchIn(it) } ?: false
 }
 
 /** Default WebView UA without the "; wv" and "Version/4.0" markers, so it looks like Chrome Mobile. */

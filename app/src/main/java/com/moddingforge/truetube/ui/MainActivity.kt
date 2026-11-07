@@ -108,7 +108,7 @@ private fun DebugChip(state: WebState, modifier: Modifier = Modifier) {
         else -> "bridge: ready"
     }
     Text(
-        text = "$bridge | ${state.url.removePrefix("https://").take(40)}",
+        text = "$bridge | ${if (state.signedIn) "acc: ok" else "acc: -"} | ${state.url.removePrefix("https://").take(32)}",
         color = Color.White,
         fontSize = 9.sp,
         maxLines = 1,
