@@ -20,6 +20,11 @@
     <string name="links_hint_open">Einstellungen öffnen</string>
     <string name="cancel">Abbrechen</string>
     <string name="save">Speichern</string>
+    <string name="menu_sign_in">Anmelden</string>
+    <string name="menu_yt_settings">YouTube-Einstellungen</string>
+    <string name="menu_your_data">Meine Daten auf YouTube</string>
+    <string name="menu_help">Hilfe &amp; Feedback</string>
+    <string name="menu_terms">Nutzungsbedingungen &amp; Datenschutz</string>
     <string name="settings_support">TrueTube auf Ko-fi unterstützen</string>
     <string name="settings_player">Player</string>
     <string name="settings_quality_wifi">Standardqualität (WLAN)</string>

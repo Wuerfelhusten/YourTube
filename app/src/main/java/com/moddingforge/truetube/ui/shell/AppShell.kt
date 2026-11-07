@@ -141,8 +141,10 @@ fun AppShell(
                     onLogo = { holder.selectTab(Tab.HOME) },
                     onSearch = { searchOpen = true },
                     onBack = { holder.goBack() },
-                    onReload = holder::reload,
+                    signedIn = state.signedIn,
                     onSettings = controller::openSettings,
+                    onOpen = holder::load,
+                    onSignIn = holder::signIn,
                 )
             } else {
                 Spacer(Modifier.fillMaxWidth().windowInsetsTopHeight(WindowInsets.statusBars))
@@ -242,8 +244,10 @@ private fun TopBar(
     onLogo: () -> Unit,
     onSearch: () -> Unit,
     onBack: () -> Unit,
-    onReload: () -> Unit,
+    signedIn: Boolean,
     onSettings: () -> Unit,
+    onOpen: (String) -> Unit,
+    onSignIn: () -> Unit,
 ) {
     var menu by remember { mutableStateOf(false) }
     Row(
@@ -284,8 +288,22 @@ private fun TopBar(
         Box {
             IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, stringResource(R.string.more)) }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                // TrueTube on top, then the entries of m.youtube's own (now hidden) top bar menu.
                 DropdownMenuItem(text = { Text(stringResource(R.string.settings_title)) }, onClick = { menu = false; onSettings() })
-                DropdownMenuItem(text = { Text(stringResource(R.string.reload)) }, onClick = { menu = false; onReload() })
+                HorizontalDivider()
+                if (!signedIn) {
+                    DropdownMenuItem(text = { Text(stringResource(R.string.menu_sign_in)) }, onClick = { menu = false; onSignIn() })
+                }
+                DropdownMenuItem(text = { Text(stringResource(R.string.menu_yt_settings)) },
+                    onClick = { menu = false; onOpen("https://m.youtube.com/select_site") })
+                if (signedIn) {
+                    DropdownMenuItem(text = { Text(stringResource(R.string.menu_your_data)) },
+                        onClick = { menu = false; onOpen("https://myaccount.google.com/yourdata/youtube") })
+                }
+                DropdownMenuItem(text = { Text(stringResource(R.string.menu_help)) },
+                    onClick = { menu = false; onOpen("https://support.google.com/youtube/?hl=" + java.util.Locale.getDefault().language) })
+                DropdownMenuItem(text = { Text(stringResource(R.string.menu_terms)) },
+                    onClick = { menu = false; onOpen("https://www.youtube.com/t/terms") })
             }
         }
     }

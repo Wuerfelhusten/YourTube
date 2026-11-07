@@ -20,6 +20,11 @@
     <string name="links_hint_open">Open settings</string>
     <string name="cancel">Cancel</string>
     <string name="save">Save</string>
+    <string name="menu_sign_in">Sign in</string>
+    <string name="menu_yt_settings">YouTube settings</string>
+    <string name="menu_your_data">Your data in YouTube</string>
+    <string name="menu_help">Help &amp; feedback</string>
+    <string name="menu_terms">Terms &amp; privacy</string>
     <string name="settings_support">Support TrueTube on Ko-fi</string>
     <string name="settings_player">Player</string>
     <string name="settings_quality_wifi">Default quality (Wi-Fi)</string>
