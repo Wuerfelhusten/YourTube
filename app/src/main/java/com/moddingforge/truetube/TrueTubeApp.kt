@@ -90,7 +90,10 @@ class AppContainer(app: Application) {
         if (s.amoled) {
             // YouTube dark theme -> pure black (its colours are CSS variables).
             append("@media (prefers-color-scheme: dark) { html { --yt-spec-base-background: #000 !important; --yt-spec-general-background-a: #000 !important; ")
-            append("--yt-spec-brand-background-solid: #000 !important; --yt-spec-raised-background: #0f0f0f !important; } html, body, ytm-app { background: #000 !important; } }\n")
+            append("--yt-spec-brand-background-solid: #000 !important; --yt-spec-raised-background: #0f0f0f !important; } html, body, ytm-app { background: #000 !important; } ")
+            append("html { --yt-spec-brand-background-primary: #000 !important; --yt-spec-brand-background-secondary: #000 !important; } ")
+            append("ytm-feed-filter-chip-bar-renderer, #filter-chip-bar, .frosted-glass, ytm-channel-list-sub-menu-renderer, ")
+            append("ytm-pivot-bar-renderer, ytm-mobile-topbar-renderer { background: #000 !important; backdrop-filter: none !important; } }\n")
         }
         if (s.hideComments) {
             // The comment teaser under the video is a "metadata carousel" in current m.youtube.
