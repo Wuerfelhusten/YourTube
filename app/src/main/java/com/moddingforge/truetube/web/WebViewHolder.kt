@@ -88,6 +88,7 @@ class WebViewHolder(
     /** Set by [PlayerController]: where watch links / non-watch links have to go. */
     var onOpenVideo: (String) -> Unit = {}
     var onOpenInFeed: (String) -> Unit = {}
+    var onFullscreen: (Boolean) -> Unit = {}
 
     val bridge = Bridge(json, ::onBridgeMessage)
     val injector = ScriptInjector(app.assets, json, InjectConfig(version = BuildConfig.VERSION_CODE, debug = BuildConfig.DEBUG, role = role.name.lowercase()))
@@ -171,6 +172,13 @@ class WebViewHolder(
     }
 
     fun send(command: BridgeCommand) = bridge.send(command)
+
+    /** Player: fullscreen layout wanted; re-applied whenever a new page becomes ready. */
+    var fullscreenMode = false
+        set(value) {
+            field = value
+            bridge.send(BridgeCommand.PlayerFullscreen(value))
+        }
 
     /** Player: mini layout wanted; re-applied whenever a new page becomes ready. */
     var miniMode = false
@@ -378,7 +386,10 @@ class WebViewHolder(
                 _state.update { it.copy(bridgeReady = true) }
                 pingSentAt = System.currentTimeMillis()
                 bridge.send(BridgeCommand.Ping(pingSentAt))
-                if (role == Role.PLAYER) bridge.send(BridgeCommand.PlayerMini(miniMode))
+                if (role == Role.PLAYER) {
+                    bridge.send(BridgeCommand.PlayerMini(miniMode))
+                    if (fullscreenMode) bridge.send(BridgeCommand.PlayerFullscreen(true))
+                }
             }
             is BridgeMessage.Pong -> {
                 val rtt = System.currentTimeMillis() - msg.nonce
@@ -403,6 +414,7 @@ class WebViewHolder(
                 refreshSignIn()
                 enforceRole(msg.url)
             }
+            is BridgeMessage.Fullscreen -> onFullscreen(msg.on)
             is BridgeMessage.OpenVideo -> onOpenVideo(msg.url)
             is BridgeMessage.OpenInFeed -> onOpenInFeed(msg.url)
             is BridgeMessage.VideoStateMsg -> _video.value = VideoState(

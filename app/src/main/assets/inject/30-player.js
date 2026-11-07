@@ -55,6 +55,79 @@
 
   if (TT_CONFIG.role !== 'player') return;
 
+  // --- fullscreen ----------------------------------------------------------------------------
+  // The WebView offers no HTML fullscreen (and it would need a user gesture, so rotate-to-
+  // fullscreen could never work). TrueTube provides the Fullscreen API itself: YouTube shows its
+  // fullscreen button and switches to its own fullscreen layout; the native side rotates to
+  // landscape and hides the system bars.
+  const root = document.documentElement;
+  let fsEl = null;
+  const define = (obj, prop, get) => { try { Object.defineProperty(obj, prop, { get, configurable: true }); } catch (e) { /* ignore */ } };
+  define(document, 'fullscreenEnabled', () => true);
+  define(document, 'webkitFullscreenEnabled', () => true);
+  define(document, 'fullscreenElement', () => fsEl);
+  define(document, 'webkitFullscreenElement', () => fsEl);
+  define(document, 'webkitCurrentFullScreenElement', () => fsEl);
+  define(document, 'webkitIsFullScreen', () => !!fsEl);
+
+  function setFullscreen(el, notifyNative) {
+    if (el === fsEl) return;
+    fsEl = el;
+    root.classList.toggle('tt-fs', !!el);
+    for (const type of ['fullscreenchange', 'webkitfullscreenchange']) {
+      (el || document).dispatchEvent(new Event(type, { bubbles: true }));
+    }
+    if (notifyNative) TT.post('fullscreen', { on: !!el });
+    TT.log('fullscreen ' + (el ? 'on' : 'off') + (notifyNative ? ' (page)' : ' (native)'));
+  }
+  const requestFs = function () { setFullscreen(this, true); return Promise.resolve(); };
+  const exitFs = function () { setFullscreen(null, true); return Promise.resolve(); };
+  Element.prototype.requestFullscreen = requestFs;
+  Element.prototype.webkitRequestFullscreen = requestFs;
+  Element.prototype.webkitRequestFullScreen = requestFs;
+  Document.prototype.exitFullscreen = exitFs;
+  Document.prototype.webkitExitFullscreen = exitFs;
+  Document.prototype.webkitCancelFullScreen = exitFs;
+
+  // Native side (rotation, Back, swipe) asks for a state.
+  TT.on('player-fullscreen', (cmd) => {
+    if (cmd.on && !fsEl) {
+      setFullscreen(document.getElementById('player-container-id') || document.getElementById('movie_player') || root, false);
+    } else if (!cmd.on && fsEl) {
+      setFullscreen(null, false);
+    }
+  });
+
+  const fsStyle = document.createElement('style');
+  fsStyle.id = 'tt-fs-style';
+  fsStyle.textContent = `
+    html.tt-fs, html.tt-fs body { overflow: hidden !important; background: #000 !important; }
+    html.tt-fs #player-container-id, html.tt-fs .player-container {
+      position: fixed !important; inset: 0 !important; top: 0 !important; width: 100vw !important; height: 100vh !important;
+      z-index: 2147483646 !important; transform: none !important; }
+    html.tt-fs #player, html.tt-fs #movie_player, html.tt-fs .html5-video-player { width: 100% !important; height: 100% !important; }
+    html.tt-fs video { object-fit: contain !important; }
+  `;
+  (document.head || document.documentElement).appendChild(fsStyle);
+
+  // Rotation changes the viewport, and m.youtube tends to pause on viewport changes: resume.
+  let playingBeforeResize = false;
+  let resizeTimer = 0;
+  window.addEventListener('resize', () => {
+    const v = document.querySelector('video');
+    if (!resizeTimer) playingBeforeResize = !!v && !v.paused && !v.ended;
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      resizeTimer = 0;
+      const vv = document.querySelector('video');
+      const p = document.getElementById('movie_player');
+      if (playingBeforeResize && vv && vv.paused && !isAd(p)) {
+        try { p && p.playVideo ? p.playVideo() : vv.play(); } catch (e) { vv.play(); }
+        TT.log('resumed after resize');
+      }
+    }, 400);
+  });
+
   // --- now-playing state for the native mini player ---------------------------------------
   let lastSent = 0;
   let lastKey = '';

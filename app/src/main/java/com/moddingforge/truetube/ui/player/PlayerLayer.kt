@@ -24,6 +24,23 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.ui.draw.clipToBounds
+import android.media.AudioManager
+import android.provider.Settings
+import android.view.WindowManager
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.BrightnessMedium
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import kotlinx.coroutines.delay
+import kotlin.math.roundToInt
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.runtime.mutableStateOf
@@ -90,15 +107,28 @@ fun PlayerLayer(
     val density = LocalDensity.current
     /** Last pixel size of the WebView in the expanded player; reused (scaled) in mini mode. */
     var expandedSize by remember { mutableStateOf<IntSize?>(null) }
+    val fullscreenWanted by controller.fullscreen.collectAsStateWithLifecycle()
+    val fullscreen = expanded && fullscreenWanted
+
+    // Rotation drives fullscreen like in the official app.
+    LaunchedEffect(portrait) { controller.onRotated(landscape = !portrait) }
 
     BackHandler(enabled = expanded) { controller.minimize() }
+    // Registered later = higher priority: in fullscreen, Back leaves fullscreen first.
+    BackHandler(enabled = fullscreen) { controller.setFullscreen(false, explicit = true) }
+
+    ImmersiveMode(activity, fullscreen)
+    val adjust = rememberAdjustState(activity)
+    LaunchedEffect(fullscreen) { if (!fullscreen) adjust.resetBrightness() }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val fullHeightPx = with(density) { maxHeight.toPx() }
         val screenWidth = maxWidth
         val progress = (drag.value / fullHeightPx).coerceIn(0f, 1f)
 
-        val container = if (expanded) {
+        val container = if (fullscreen) {
+            Modifier.fillMaxSize().background(Color.Black)
+        } else if (expanded) {
             Modifier
                 .fillMaxSize()
                 .graphicsLayer {
@@ -138,15 +168,18 @@ fun PlayerLayer(
             Row(Modifier.fillMaxSize()) {
                 // Same composition slot in both modes -> the WebView is never re-created.
                 Box(
-                    if (expanded) Modifier.weight(1f).fillMaxHeight().navigationBarsPadding()
-                    else Modifier.width(MiniWidth).fillMaxHeight().clipToBounds(),
+                    when {
+                        fullscreen -> Modifier.weight(1f).fillMaxHeight()
+                        expanded -> Modifier.weight(1f).fillMaxHeight().navigationBarsPadding()
+                        else -> Modifier.width(MiniWidth).fillMaxHeight().clipToBounds()
+                    },
                 ) {
                     // Mini: m.youtube pauses as soon as its viewport changes size. So the WebView
                     // keeps exactly its expanded size and is only *drawn* scaled down; the clip
                     // shows the top 16:9 strip, which is the (fixed, sticky) player.
                     val fullWidth = screenWidth
                     val webModifier = if (expanded) {
-                        Modifier.fillMaxSize().onSizeChanged { if (it.height > 0) expandedSize = it }
+                        Modifier.fillMaxSize().onSizeChanged { if (it.height > 0 && !fullscreen) expandedSize = it }
                     } else {
                         val s = MiniWidth / fullWidth
                         val size = expandedSize
@@ -183,7 +216,17 @@ fun PlayerLayer(
                                     }
                                 }
                             },
-                            update = { layout -> layout.dragEnabled = expanded && portrait },
+                            update = { layout ->
+                                layout.mode = when {
+                                    fullscreen -> PlayerDragLayout.GestureMode.FULLSCREEN
+                                    expanded && portrait -> PlayerDragLayout.GestureMode.PORTRAIT
+                                    else -> PlayerDragLayout.GestureMode.NONE
+                                }
+                                layout.onSwipeUp = { controller.setFullscreen(true, explicit = true) }
+                                layout.onSwipeDownFullscreen = { controller.setFullscreen(false, explicit = true) }
+                                layout.onAdjust = { kind, delta -> adjust.change(kind, delta) }
+                                layout.onAdjustEnd = { adjust.end() }
+                            },
                             onRelease = { layout ->
                                 android.util.Log.i("TT.Player", "player AndroidView released")
                                 player.detach(activity)
@@ -225,6 +268,119 @@ fun PlayerLayer(
                     drawStopIndicator = {},
                 )
             }
+            if (fullscreen) AdjustIndicator(adjust, Modifier.align(Alignment.Center))
         }
+    }
+}
+
+// --- fullscreen helpers -------------------------------------------------------------------------
+
+/** Hides status and navigation bars while [on] (swipe from the edge shows them briefly). */
+@Composable
+private fun ImmersiveMode(activity: ComponentActivity, on: Boolean) {
+    DisposableEffect(on) {
+        val controller = WindowCompat.getInsetsController(activity.window, activity.window.decorView)
+        if (on) {
+            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller.hide(WindowInsetsCompat.Type.systemBars())
+        }
+        onDispose {
+            if (on) controller.show(WindowInsetsCompat.Type.systemBars())
+        }
+    }
+}
+
+/** Brightness (window only, reset when leaving fullscreen) and media volume via swipe gestures. */
+@Stable
+class AdjustState(private val activity: ComponentActivity) {
+    private val audio = activity.getSystemService(android.content.Context.AUDIO_SERVICE) as AudioManager
+    private val maxVolume = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
+    private var volumeLevel = -1f
+
+    var kind by mutableStateOf<PlayerDragLayout.Adjust?>(null)
+        private set
+    var value by mutableFloatStateOf(0f)
+        private set
+    var endedAt by mutableLongStateOf(0L)
+        private set
+
+    fun change(kind: PlayerDragLayout.Adjust, delta: Float) {
+        this.kind = kind
+        endedAt = 0L
+        // A full swipe over the whole height covers the full range, like most players.
+        when (kind) {
+            PlayerDragLayout.Adjust.BRIGHTNESS -> {
+                val attrs = activity.window.attributes
+                val current = if (attrs.screenBrightness >= 0f) attrs.screenBrightness else systemBrightness()
+                val next = (current + delta).coerceIn(0.01f, 1f)
+                attrs.screenBrightness = next
+                activity.window.attributes = attrs
+                value = next
+            }
+            PlayerDragLayout.Adjust.VOLUME -> {
+                if (volumeLevel < 0f) volumeLevel = audio.getStreamVolume(AudioManager.STREAM_MUSIC) / maxVolume.toFloat()
+                volumeLevel = (volumeLevel + delta).coerceIn(0f, 1f)
+                audio.setStreamVolume(AudioManager.STREAM_MUSIC, (volumeLevel * maxVolume).roundToInt(), 0)
+                value = volumeLevel
+            }
+        }
+    }
+
+    fun end() {
+        volumeLevel = -1f
+        endedAt = System.currentTimeMillis()
+    }
+
+    fun hide() {
+        kind = null
+    }
+
+    /** Back to the system brightness (called when leaving fullscreen). */
+    fun resetBrightness() {
+        val attrs = activity.window.attributes
+        attrs.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+        activity.window.attributes = attrs
+    }
+
+    private fun systemBrightness(): Float = runCatching {
+        Settings.System.getInt(activity.contentResolver, Settings.System.SCREEN_BRIGHTNESS) / 255f
+    }.getOrDefault(0.5f)
+}
+
+@Composable
+private fun rememberAdjustState(activity: ComponentActivity): AdjustState {
+    val state = remember(activity) { AdjustState(activity) }
+    DisposableEffect(state) { onDispose { state.resetBrightness() } }
+    return state
+}
+
+@Composable
+private fun AdjustIndicator(state: AdjustState, modifier: Modifier = Modifier) {
+    val kind = state.kind ?: return
+    LaunchedEffect(state.endedAt) {
+        if (state.endedAt > 0L) {
+            delay(700)
+            state.hide()
+        }
+    }
+    Row(
+        modifier
+            .background(Color(0xB3000000), RoundedCornerShape(24.dp))
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            if (kind == PlayerDragLayout.Adjust.BRIGHTNESS) Icons.Filled.BrightnessMedium else Icons.AutoMirrored.Filled.VolumeUp,
+            contentDescription = null,
+            tint = Color.White,
+        )
+        Spacer(Modifier.width(12.dp))
+        LinearProgressIndicator(
+            progress = { state.value },
+            modifier = Modifier.width(120.dp).height(4.dp),
+            color = Color.White,
+            trackColor = Color(0x55FFFFFF),
+            drawStopIndicator = {},
+        )
     }
 }

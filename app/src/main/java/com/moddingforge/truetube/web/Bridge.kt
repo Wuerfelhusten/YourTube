@@ -47,6 +47,10 @@ sealed interface BridgeMessage {
         val duration: Double = 0.0,
     ) : BridgeMessage
 
+    /** Player: the page entered/left fullscreen (YouTube's fullscreen button). */
+    @Serializable @SerialName("fullscreen")
+    data class Fullscreen(val on: Boolean) : BridgeMessage
+
     /** The fallback script had to skip a video ad (blocking missed it). */
     @Serializable @SerialName("ad-skipped")
     data object AdSkipped : BridgeMessage
@@ -68,6 +72,10 @@ sealed interface BridgeCommand {
     /** Player: play | pause | toggle */
     @Serializable @SerialName("player-control")
     data class PlayerControl(val action: String) : BridgeCommand
+
+    /** Player: enter/leave YouTube's fullscreen layout (native rotation, Back, swipe). */
+    @Serializable @SerialName("player-fullscreen")
+    data class PlayerFullscreen(val on: Boolean) : BridgeCommand
 
     /** Player: switch the page into mini layout (only the video, filling the small WebView). */
     @Serializable @SerialName("player-mini")
