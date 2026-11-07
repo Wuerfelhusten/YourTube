@@ -95,6 +95,11 @@ class WebViewHolder(
     var onFullscreen: (Boolean) -> Unit = {}
     var onOpenSettings: () -> Unit = {}
 
+    private fun sponsorLabel(category: String): String {
+        val id = SPONSOR_LABELS[category] ?: return category
+        return app.getString(id)
+    }
+
     /** Native share sheet with a clean link (youtu.be for videos, no tracking parameters). */
     fun share(url: String?, title: String?) {
         val link = UrlRouter.shareUrl(url?.takeIf { it.isNotBlank() } ?: _state.value.url)
@@ -210,6 +215,14 @@ class WebViewHolder(
     }
 
     fun send(command: BridgeCommand) = bridge.send(command)
+
+    /** Commands that must survive page (re)loads: kept per type and re-sent when a page is ready. */
+    private val sticky = LinkedHashMap<Class<*>, BridgeCommand>()
+
+    fun sendSticky(command: BridgeCommand) {
+        sticky[command.javaClass] = command
+        bridge.send(command)
+    }
 
     /** Player: fullscreen layout wanted; re-applied whenever a new page becomes ready. */
     var fullscreenMode = false
@@ -428,6 +441,7 @@ class WebViewHolder(
                 pingSentAt = System.currentTimeMillis()
                 bridge.send(BridgeCommand.Ping(pingSentAt))
                 if (userCss.isNotEmpty()) bridge.send(BridgeCommand.UserCss(userCss))
+                sticky.values.forEach(bridge::send)
                 if (role == Role.PLAYER) {
                     bridge.send(BridgeCommand.PlayerMini(miniMode))
                     if (fullscreenMode) bridge.send(BridgeCommand.PlayerFullscreen(true))
@@ -458,6 +472,10 @@ class WebViewHolder(
             }
             is BridgeMessage.Fullscreen -> onFullscreen(msg.on)
             is BridgeMessage.Share -> share(msg.url, msg.title)
+            is BridgeMessage.SponsorSkipped -> {
+                Log.i(TAG, "SponsorBlock skipped ${msg.category} (${msg.seconds.toInt()} s)")
+                android.widget.Toast.makeText(app, app.getString(com.moddingforge.truetube.R.string.sponsor_skipped, sponsorLabel(msg.category)), android.widget.Toast.LENGTH_SHORT).show()
+            }
             BridgeMessage.OpenSettings -> onOpenSettings()
             is BridgeMessage.OpenVideo -> onOpenVideo(msg.url)
             is BridgeMessage.OpenInFeed -> onOpenInFeed(msg.url)
@@ -476,6 +494,18 @@ class WebViewHolder(
         private const val TAG = "TT.WebView"
         private const val ENGINE_WAIT_MS = 3_000L
         private var serviceWorkerHooked = false
+
+        /** SponsorBlock categories -> localized labels (also used by the settings screen). */
+        val SPONSOR_LABELS = mapOf(
+            "sponsor" to com.moddingforge.truetube.R.string.sb_sponsor,
+            "selfpromo" to com.moddingforge.truetube.R.string.sb_selfpromo,
+            "interaction" to com.moddingforge.truetube.R.string.sb_interaction,
+            "intro" to com.moddingforge.truetube.R.string.sb_intro,
+            "outro" to com.moddingforge.truetube.R.string.sb_outro,
+            "preview" to com.moddingforge.truetube.R.string.sb_preview,
+            "music_offtopic" to com.moddingforge.truetube.R.string.sb_music_offtopic,
+            "filler" to com.moddingforge.truetube.R.string.sb_filler,
+        )
     }
 }
 

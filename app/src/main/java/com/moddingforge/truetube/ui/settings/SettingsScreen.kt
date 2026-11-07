@@ -32,6 +32,16 @@ import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Headphones
 import androidx.compose.material.icons.outlined.PictureInPictureAlt
 import androidx.compose.material.icons.outlined.ScreenRotation
+import androidx.compose.material.icons.outlined.Category
+import androidx.compose.material.icons.outlined.Coffee
+import androidx.compose.material.icons.outlined.FastForward
+import androidx.compose.material.icons.outlined.SignalCellularAlt
+import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material.icons.outlined.ThumbDown
+import androidx.compose.material.icons.outlined.Wifi
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.RadioButton
+import com.moddingforge.truetube.web.WebViewHolder
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.ui.text.font.FontFamily
@@ -83,6 +93,7 @@ fun SettingsScreen(container: AppContainer, onClose: () -> Unit) {
     var confirmSignOut by remember { mutableStateOf(false) }
     var updateRequested by remember { mutableStateOf(false) }
     var editCss by remember { mutableStateOf(false) }
+    var picker by remember { mutableStateOf<Picker?>(null) }
     val s by container.settings.settings.collectAsStateWithLifecycle()
     val extras by container.filterRepository.optionalComponents.collectAsStateWithLifecycle()
 
@@ -111,6 +122,16 @@ fun SettingsScreen(container: AppContainer, onClose: () -> Unit) {
         }
 
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+            // --- support (top of the list) ---
+            Item(Icons.Outlined.Coffee, stringResource(R.string.settings_support), "ko-fi.com/wuerfelhusten") {
+                runCatching {
+                    context.startActivity(
+                        android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(KOFI_URL))
+                            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                    )
+                }
+            }
+
             // --- ad blocker ---
             Section(stringResource(R.string.settings_adblock))
             SwitchItem(Icons.Outlined.Shield, stringResource(R.string.settings_adblock_switch),
@@ -154,6 +175,25 @@ fun SettingsScreen(container: AppContainer, onClose: () -> Unit) {
             SwitchItem(Icons.Outlined.ScreenRotation, stringResource(R.string.settings_rotate),
                 stringResource(R.string.settings_rotate_hint), s.rotateToFullscreen) { v ->
                 container.settings.update { it.copy(rotateToFullscreen = v) }
+            }
+
+            // --- player extras ---
+            Section(stringResource(R.string.settings_player))
+            Item(Icons.Outlined.Wifi, stringResource(R.string.settings_quality_wifi), qualityLabel(s.qualityWifi)) { picker = Picker.QUALITY_WIFI }
+            Item(Icons.Outlined.SignalCellularAlt, stringResource(R.string.settings_quality_mobile), qualityLabel(s.qualityMobile)) { picker = Picker.QUALITY_MOBILE }
+            Item(Icons.Outlined.Speed, stringResource(R.string.settings_speed), speedLabel(s.speed)) { picker = Picker.SPEED }
+            SwitchItem(Icons.Outlined.FastForward, stringResource(R.string.settings_sponsorblock),
+                stringResource(R.string.settings_sponsorblock_hint), s.sponsorBlock) { v ->
+                container.settings.update { it.copy(sponsorBlock = v) }
+            }
+            if (s.sponsorBlock) {
+                Item(Icons.Outlined.Category, stringResource(R.string.settings_sponsorblock_categories),
+                    s.sponsorCategories.mapNotNull { WebViewHolder.SPONSOR_LABELS[it] }.map { stringResource(it) }.joinToString(", ")
+                        .ifEmpty { stringResource(R.string.settings_custom_css_none) }) { picker = Picker.SPONSOR }
+            }
+            SwitchItem(Icons.Outlined.ThumbDown, stringResource(R.string.settings_ryd),
+                stringResource(R.string.settings_ryd_hint), s.returnDislikes) { v ->
+                container.settings.update { it.copy(returnDislikes = v) }
             }
 
             // --- clean up YouTube (Brave's YouTube lists + TrueTube options) ---
@@ -200,6 +240,19 @@ fun SettingsScreen(container: AppContainer, onClose: () -> Unit) {
         }
     }
 
+    when (picker) {
+        Picker.QUALITY_WIFI -> ChoiceDialog(stringResource(R.string.settings_quality_wifi), QUALITIES, s.qualityWifi, { qualityLabel(it) },
+            onDismiss = { picker = null }) { q -> container.settings.update { it.copy(qualityWifi = q) }; picker = null }
+        Picker.QUALITY_MOBILE -> ChoiceDialog(stringResource(R.string.settings_quality_mobile), QUALITIES, s.qualityMobile, { qualityLabel(it) },
+            onDismiss = { picker = null }) { q -> container.settings.update { it.copy(qualityMobile = q) }; picker = null }
+        Picker.SPEED -> ChoiceDialog(stringResource(R.string.settings_speed), SPEEDS, s.speed, { speedLabel(it) },
+            onDismiss = { picker = null }) { v -> container.settings.update { it.copy(speed = v) }; picker = null }
+        Picker.SPONSOR -> MultiChoiceDialog(stringResource(R.string.settings_sponsorblock_categories),
+            WebViewHolder.SPONSOR_LABELS.keys.toList(), s.sponsorCategories, { stringResource(WebViewHolder.SPONSOR_LABELS.getValue(it)) },
+            onDismiss = { picker = null }) { set -> container.settings.update { it.copy(sponsorCategories = set) }; picker = null }
+        null -> Unit
+    }
+
     if (editCss) {
         var text by remember { mutableStateOf(s.customCss) }
         AlertDialog(
@@ -244,6 +297,73 @@ fun SettingsScreen(container: AppContainer, onClose: () -> Unit) {
             dismissButton = { TextButton(onClick = { confirmSignOut = false }) { Text(stringResource(R.string.cancel)) } },
         )
     }
+}
+
+private const val KOFI_URL = "https://ko-fi.com/wuerfelhusten"
+
+private enum class Picker { QUALITY_WIFI, QUALITY_MOBILE, SPEED, SPONSOR }
+
+private val QUALITIES = listOf("auto", "hd2160", "hd1440", "hd1080", "hd720", "large", "medium", "small", "tiny")
+private val SPEEDS = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f, 2.5f, 3f)
+
+@Composable
+private fun qualityLabel(q: String): String = when (q) {
+    "auto" -> stringResource(R.string.quality_auto)
+    "hd2160" -> "2160p (4K)"
+    "hd1440" -> "1440p"
+    "hd1080" -> "1080p"
+    "hd720" -> "720p"
+    "large" -> "480p"
+    "medium" -> "360p"
+    "small" -> "240p"
+    "tiny" -> "144p"
+    else -> q
+}
+
+private fun speedLabel(v: Float): String = (if (v % 1f == 0f) v.toInt().toString() else v.toString()).replace('.', ',') + "×"
+
+@Composable
+private fun <T> ChoiceDialog(title: String, options: List<T>, selected: T, label: @Composable (T) -> String, onDismiss: () -> Unit, onPick: (T) -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                for (o in options) {
+                    Row(Modifier.fillMaxWidth().clickable { onPick(o) }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = o == selected, onClick = { onPick(o) })
+                        Spacer(Modifier.width(8.dp))
+                        Text(label(o))
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
+}
+
+@Composable
+private fun MultiChoiceDialog(title: String, options: List<String>, selected: Set<String>, label: @Composable (String) -> String, onDismiss: () -> Unit, onDone: (Set<String>) -> Unit) {
+    var current by remember { mutableStateOf(selected) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                for (o in options) {
+                    val on = o in current
+                    Row(Modifier.fillMaxWidth().clickable { current = if (on) current - o else current + o }.padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = on, onCheckedChange = { current = if (it) current + o else current - o })
+                        Spacer(Modifier.width(8.dp))
+                        Text(label(o))
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { onDone(current) }) { Text(stringResource(R.string.save)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
 }
 
 /** Brave's catalog titles are English; show them localized (fallback: the catalog title). */

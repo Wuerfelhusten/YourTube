@@ -38,25 +38,31 @@
     ytm-app-promo-renderer, .mobile-topbar-header-open-app, ytm-companion-slot { display: none !important; }
 
     /* --- watch page: action bar as labelled pills (official app style) --- */
-    /* Row 1: avatar ... Subscribe (right) - Row 2: action pills, like the official app.
-       Done with flex order + a full-width pseudo element, without moving YouTube's nodes. */
+    /* Row 1: avatar · name · Subscribe (right) - Row 2: action pills in ONE horizontally
+       scrolling row, like the official app. YouTube puts all of them into one container, and we
+       must not move its nodes. So the container is the scroller, while the channel row items are
+       positioned absolutely against the (non-scrolling) outer renderer: an absolutely positioned
+       element whose containing block lies outside a scroll container does not scroll with it. */
+    ytm-slim-video-action-bar-renderer { position: relative !important; display: block !important; padding-top: 60px !important; }
     .slim-video-action-bar-actions {
-      display: flex !important; flex-wrap: wrap !important; align-items: center !important;
-      gap: 8px !important; row-gap: 12px !important; padding: 0 12px !important;
-      justify-content: flex-start !important; overflow: visible !important;
+      position: static !important;
+      display: flex !important; flex-wrap: nowrap !important; align-items: center !important;
+      gap: 8px !important; padding: 0 12px 4px !important; margin: 0 !important;
+      justify-content: flex-start !important; overflow-x: auto !important; overflow-y: hidden !important;
+      scrollbar-width: none; -webkit-overflow-scrolling: touch;
     }
-    .slim-video-action-bar-actions::after { content: ''; flex-basis: 100%; height: 0; order: 2; }
-    .slim-video-action-bar-actions > .slim-video-owner-icon,
-    .slim-video-action-bar-actions > .slim-subscribe-button { order: 1; }
-    .slim-video-action-bar-actions > .slim-subscribe-button { flex: 0 0 auto !important; margin: 0 !important; }
+    .slim-video-action-bar-actions::-webkit-scrollbar { display: none; }
+    .slim-video-action-bar-actions > .slim-video-owner-icon {
+      position: absolute !important; left: 12px !important; top: 6px !important; margin: 0 !important; }
+    .slim-video-action-bar-actions > .slim-subscribe-button {
+      position: absolute !important; right: 12px !important; top: 14px !important; margin: 0 !important; flex: none !important; }
     .slim-video-action-bar-actions > like-button-view-model,
     .slim-video-action-bar-actions > dislike-button-view-model,
-    .slim-video-action-bar-actions > button-view-model { order: 3; margin-left: 0 !important; }
-    .slim-video-action-bar-actions > like-button-view-model,
-    .slim-video-action-bar-actions > dislike-button-view-model { margin-left: 0 !important; }
+    .slim-video-action-bar-actions > button-view-model { flex: 0 0 auto !important; margin-left: 0 !important; }
     .tt-channel-subs { font: 400 12px Roboto, Arial, sans-serif; color: var(--tt-text-2); margin-left: 6px; }
-    .tt-channel-name { order: 1; font: 500 16px Roboto, Arial, sans-serif; color: var(--tt-text);
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1 1 0; min-width: 0; }
+    .tt-channel-name { position: absolute; left: 68px; top: 20px; right: 150px;
+      font: 500 16px Roboto, Arial, sans-serif; color: var(--tt-text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .tt-pill {
       flex: 0 0 auto !important; display: inline-flex !important; align-items: center !important; gap: 6px !important;
       height: 36px !important; padding: 0 14px !important; border-radius: 18px !important;

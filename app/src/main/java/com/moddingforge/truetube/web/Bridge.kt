@@ -47,6 +47,10 @@ sealed interface BridgeMessage {
         val duration: Double = 0.0,
     ) : BridgeMessage
 
+    /** Player: a SponsorBlock segment was skipped. */
+    @Serializable @SerialName("sponsor-skipped")
+    data class SponsorSkipped(val category: String, val seconds: Double = 0.0) : BridgeMessage
+
     /** navigator.share() from the page -> native share sheet. */
     @Serializable @SerialName("share")
     data class Share(val url: String = "", val title: String = "", val text: String = "") : BridgeMessage
@@ -76,6 +80,21 @@ sealed interface BridgeCommand {
 
     @Serializable @SerialName("scroll-top")
     data object ScrollTop : BridgeCommand
+
+    /** Player: default quality ("auto" = YouTube decides) and speed for the current video. */
+    @Serializable @SerialName("player-prefs")
+    data class PlayerPrefs(val quality: String, val speed: Double) : BridgeCommand
+
+    @Serializable
+    data class Segment(val start: Double, val end: Double, val category: String)
+
+    /** Player: SponsorBlock segments to skip for [videoId]. */
+    @Serializable @SerialName("sponsor-segments")
+    data class SponsorSegments(val videoId: String, val segments: List<Segment>) : BridgeCommand
+
+    /** Player: Return YouTube Dislike count for [videoId]. */
+    @Serializable @SerialName("dislikes")
+    data class Dislikes(val videoId: String, val count: Long) : BridgeCommand
 
     /** CSS from TrueTube Settings (hide comments, custom CSS). Empty = remove. */
     @Serializable @SerialName("user-css")

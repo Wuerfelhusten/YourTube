@@ -5,6 +5,7 @@ import android.webkit.WebView
 import com.moddingforge.truetube.adblock.AdblockUpdateWorker
 import com.moddingforge.truetube.adblock.FilterRepository
 import com.moddingforge.truetube.playback.PlaybackConnector
+import com.moddingforge.truetube.playback.PlayerExtras
 import com.moddingforge.truetube.web.PlayerController
 import com.moddingforge.truetube.web.Role
 import com.moddingforge.truetube.web.WebViewHolder
@@ -51,6 +52,7 @@ class AppContainer(app: Application) {
     val playerController = PlayerController(feed, player, settings)
     @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     val playbackConnector = PlaybackConnector(app, playerController, settings, appScope)
+    val playerExtras = PlayerExtras(app, player, settings, json, appScope)
 
     init {
         // Settings that act on the pages live.
