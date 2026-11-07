@@ -20,6 +20,12 @@ import androidx.core.content.ContextCompat
 import com.moddingforge.truetube.R
 import com.moddingforge.truetube.web.PlayerMode
 import com.moddingforge.truetube.web.UrlRouter
+import com.moddingforge.truetube.ShellRequest
+import androidx.compose.runtime.getValue
+import androidx.core.content.pm.ShortcutInfoCompat
+import androidx.core.content.pm.ShortcutManagerCompat
+import androidx.core.graphics.drawable.IconCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -45,6 +51,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private const val PIP_ACTION_TOGGLE = "com.moddingforge.truetube.PIP_TOGGLE"
+private const val EXTRA_SHORTCUT = "tt_shortcut"
 
 class MainActivity : ComponentActivity() {
 
@@ -56,13 +63,18 @@ class MainActivity : ComponentActivity() {
         val suggestions = SearchSuggestions(container.json)
         val history = SearchHistory(this)
         setContent {
-            TrueTubeTheme {
+            val s by container.settings.settings.collectAsStateWithLifecycle()
+            TrueTubeTheme(dynamicColor = s.materialYou, amoled = s.amoled) {
                 AppShell(container, this, suggestions, history)
             }
         }
         handleDebugIntent(intent)
         // A fresh launch from a link; on recreation (e.g. after process death) the intent is old.
-        if (savedInstanceState == null) handleLinkIntent(intent)
+        if (savedInstanceState == null) {
+            handleLinkIntent(intent)
+            handleShortcut(intent)
+        }
+        publishShortcuts()
 
         // Fullscreen toggled by the user forces an orientation (see PlayerController).
         lifecycleScope.launch {
@@ -205,6 +217,32 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         handleDebugIntent(intent)
         handleLinkIntent(intent)
+        handleShortcut(intent)
+    }
+
+    // --- app shortcuts (long press on the icon) -----------------------------------------------
+
+    private fun publishShortcuts() {
+        fun shortcut(id: String, label: Int, icon: Int) = ShortcutInfoCompat.Builder(this, id)
+            .setShortLabel(getString(label))
+            .setIcon(IconCompat.createWithResource(this, icon))
+            .setIntent(Intent(this, MainActivity::class.java).setAction(Intent.ACTION_VIEW).putExtra(EXTRA_SHORTCUT, id))
+            .build()
+        runCatching {
+            ShortcutManagerCompat.setDynamicShortcuts(this, listOf(
+                shortcut("search", R.string.search, R.drawable.ic_shortcut_search),
+                shortcut("subscriptions", R.string.tab_subscriptions, R.drawable.ic_shortcut_subscriptions),
+                shortcut("history", R.string.shortcut_history, R.drawable.ic_shortcut_history),
+            ))
+        }
+    }
+
+    private fun handleShortcut(intent: Intent?) {
+        when (intent?.getStringExtra(EXTRA_SHORTCUT)) {
+            "search" -> container.shellRequests.value = ShellRequest.OpenSearch
+            "subscriptions" -> window.decorView.post { container.playerController.navigate(com.moddingforge.truetube.web.Tab.SUBSCRIPTIONS.url) }
+            "history" -> window.decorView.post { container.playerController.navigate("https://m.youtube.com/feed/history") }
+        }
     }
 
     /** YouTube link opened from another app, or text shared to TrueTube. */

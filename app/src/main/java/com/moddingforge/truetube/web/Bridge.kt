@@ -87,7 +87,16 @@ sealed interface BridgeCommand {
 
     /** Player: default quality ("auto" = YouTube decides) and speed for the current video. */
     @Serializable @SerialName("player-prefs")
-    data class PlayerPrefs(val quality: String, val speed: Double) : BridgeCommand
+    data class PlayerPrefs(
+        val quality: String,
+        val speed: Double,
+        val originalAudio: Boolean = true,
+        val noAutoCaptions: Boolean = false,
+    ) : BridgeCommand
+
+    /** Player tools sheet: loop on/off, set speed, set quality now (not as default). */
+    @Serializable @SerialName("player-tool")
+    data class PlayerTool(val action: String, val value: String = "") : BridgeCommand
 
     @Serializable
     data class Segment(val start: Double, val end: Double, val category: String)

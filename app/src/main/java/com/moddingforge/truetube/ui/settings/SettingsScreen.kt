@@ -34,6 +34,12 @@ import androidx.compose.material.icons.outlined.PictureInPictureAlt
 import androidx.compose.material.icons.outlined.ScreenRotation
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Block
+import androidx.compose.material.icons.outlined.ClosedCaptionDisabled
+import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.RecordVoiceOver
+import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.automirrored.outlined.QueueMusic
 import androidx.compose.material.icons.outlined.TaskAlt
@@ -198,6 +204,16 @@ fun SettingsScreen(container: AppContainer, onClose: () -> Unit) {
                     s.sponsorCategories.mapNotNull { WebViewHolder.SPONSOR_LABELS[it] }.map { stringResource(it) }.joinToString(", ")
                         .ifEmpty { stringResource(R.string.settings_custom_css_none) }) { picker = Picker.SPONSOR }
             }
+            SwitchItem(Icons.Outlined.RecordVoiceOver, stringResource(R.string.settings_original_audio),
+                stringResource(R.string.settings_original_audio_hint), s.originalAudio) { v ->
+                container.settings.update { it.copy(originalAudio = v) }
+            }
+            SwitchItem(Icons.Outlined.ClosedCaptionDisabled, stringResource(R.string.settings_no_captions),
+                stringResource(R.string.settings_no_captions_hint), s.noAutoCaptions) { v ->
+                container.settings.update { it.copy(noAutoCaptions = v) }
+            }
+            Item(Icons.Outlined.TouchApp, stringResource(R.string.settings_double_tap),
+                stringResource(R.string.settings_seconds, s.doubleTapSeconds)) { picker = Picker.DOUBLE_TAP }
             SwitchItem(Icons.Outlined.ThumbDown, stringResource(R.string.settings_ryd),
                 stringResource(R.string.settings_ryd_hint), s.returnDislikes) { v ->
                 container.settings.update { it.copy(returnDislikes = v) }
@@ -245,6 +261,20 @@ fun SettingsScreen(container: AppContainer, onClose: () -> Unit) {
                 editCss = true
             }
 
+            // --- app ---
+            Section(stringResource(R.string.settings_app))
+            Item(Icons.Outlined.Home, stringResource(R.string.settings_start_page), startPageLabel(s.startPage)) { picker = Picker.START_PAGE }
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                SwitchItem(Icons.Outlined.Palette, stringResource(R.string.settings_material_you),
+                    stringResource(R.string.settings_material_you_hint), s.materialYou) { v ->
+                    container.settings.update { it.copy(materialYou = v) }
+                }
+            }
+            SwitchItem(Icons.Outlined.DarkMode, stringResource(R.string.settings_amoled),
+                stringResource(R.string.settings_amoled_hint), s.amoled) { v ->
+                container.settings.update { it.copy(amoled = v) }
+            }
+
             // --- links ---
             Section(stringResource(R.string.settings_links))
             linksEnabled?.let { enabled ->
@@ -282,6 +312,12 @@ fun SettingsScreen(container: AppContainer, onClose: () -> Unit) {
         Picker.MIN_DURATION -> ChoiceDialog(stringResource(R.string.filter_min_duration), MIN_DURATIONS, s.filterMinDuration,
             { if (it <= 0) stringResource(R.string.filter_off) else durationLabel(it) },
             onDismiss = { picker = null }) { v -> container.settings.update { it.copy(filterMinDuration = v) }; picker = null }
+        Picker.DOUBLE_TAP -> ChoiceDialog(stringResource(R.string.settings_double_tap), listOf(5, 10, 15, 20, 30, 60), s.doubleTapSeconds,
+            { stringResource(R.string.settings_seconds, it) },
+            onDismiss = { picker = null }) { v -> container.settings.update { it.copy(doubleTapSeconds = v) }; picker = null }
+        Picker.START_PAGE -> ChoiceDialog(stringResource(R.string.settings_start_page), listOf("home", "subscriptions", "library", "history"), s.startPage,
+            { startPageLabel(it) },
+            onDismiss = { picker = null }) { v -> container.settings.update { it.copy(startPage = v) }; picker = null }
         null -> Unit
     }
 
@@ -354,7 +390,15 @@ fun SettingsScreen(container: AppContainer, onClose: () -> Unit) {
 
 private const val KOFI_URL = "https://ko-fi.com/wuerfelhusten"
 
-private enum class Picker { QUALITY_WIFI, QUALITY_MOBILE, SPEED, SPONSOR, MIN_DURATION }
+private enum class Picker { QUALITY_WIFI, QUALITY_MOBILE, SPEED, SPONSOR, MIN_DURATION, DOUBLE_TAP, START_PAGE }
+
+@Composable
+private fun startPageLabel(p: String): String = when (p) {
+    "subscriptions" -> stringResource(R.string.tab_subscriptions)
+    "library" -> stringResource(R.string.tab_you)
+    "history" -> stringResource(R.string.start_history)
+    else -> stringResource(R.string.start_home)
+}
 
 private val MIN_DURATIONS = listOf(0, 60, 120, 180, 300, 600)
 

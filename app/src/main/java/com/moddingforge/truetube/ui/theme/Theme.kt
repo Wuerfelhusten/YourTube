@@ -30,9 +30,11 @@ private val DarkColors = darkColorScheme(
 fun TrueTubeTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = false,
+    /** Pure black backgrounds in dark mode (AMOLED). */
+    amoled: Boolean = false,
     content: @Composable () -> Unit,
 ) {
-    val colors = when {
+    val base = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val ctx = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(ctx) else dynamicLightColorScheme(ctx)
@@ -40,5 +42,6 @@ fun TrueTubeTheme(
         darkTheme -> DarkColors
         else -> LightColors
     }
+    val colors = if (darkTheme && amoled) base.copy(background = Color.Black, surface = Color.Black, surfaceContainer = Color.Black, surfaceContainerLow = Color.Black) else base
     MaterialTheme(colorScheme = colors, content = content)
 }

@@ -180,7 +180,15 @@ class WebViewHolder(
         if (contextWrapper.baseContext === activity) contextWrapper.baseContext = app
     }
 
-    fun loadIfEmpty(url: String = UrlRouter.HOME) {
+    /** Start page from TrueTube Settings. */
+    fun startUrl(): String = when (settings.current.startPage) {
+        "subscriptions" -> Tab.SUBSCRIPTIONS.url
+        "library" -> Tab.YOU.url
+        "history" -> "https://m.youtube.com/feed/history"
+        else -> UrlRouter.HOME
+    }
+
+    fun loadIfEmpty(url: String = startUrl()) {
         val wv = webView ?: return
         if (wv.url == null && pendingInitialUrl == null) load(url)
     }

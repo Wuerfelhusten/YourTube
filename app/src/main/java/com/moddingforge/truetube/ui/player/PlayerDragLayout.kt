@@ -40,6 +40,18 @@ class PlayerDragLayout(context: Context) : FrameLayout(context) {
     var onAdjust: (kind: Adjust, delta: Float) -> Unit = { _, _ -> }
     var onAdjustEnd: () -> Unit = {}
     var onSwipeDownFullscreen: () -> Unit = {}
+    /** Any touch on the player (shows the native tools button). */
+    var onAnyTouch: () -> Unit = {}
+
+    /**
+     * Native double-tap seek with a custom length. 0 or 10 = leave it to YouTube's own handler
+     * (10 s); any other value takes over the second tap in the left/right third.
+     */
+    var doubleTapSeconds = 0
+    var onDoubleTap: (forward: Boolean) -> Unit = {}
+    private var lastTapUp = 0L
+    private var lastTapX = 0f
+    private var consumingDoubleTap = false
 
     private enum class Track { NONE, MINIMIZE, SWIPE_UP, ADJUST_BRIGHTNESS, ADJUST_VOLUME, EXIT_FULLSCREEN }
 
@@ -52,6 +64,8 @@ class PlayerDragLayout(context: Context) : FrameLayout(context) {
     private var tracker: VelocityTracker? = null
 
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
+        if (ev.actionMasked == MotionEvent.ACTION_DOWN) onAnyTouch()
+        if (handleDoubleTap(ev)) return true
         if (mode == GestureMode.NONE) return false
         when (ev.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
@@ -93,8 +107,35 @@ class PlayerDragLayout(context: Context) : FrameLayout(context) {
         return false
     }
 
+    /** @return true when the second tap of a double tap is taken over (the page never sees it). */
+    private fun handleDoubleTap(ev: MotionEvent): Boolean {
+        if (doubleTapSeconds <= 0 || doubleTapSeconds == 10) return false
+        val onVideo = mode == GestureMode.FULLSCREEN || ev.y <= videoHeight()
+        when (ev.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                val now = ev.eventTime
+                val side = ev.x < width / 3f || ev.x > width * 2f / 3f
+                if (onVideo && side && now - lastTapUp < ViewConfiguration.getDoubleTapTimeout() && abs(ev.x - lastTapX) < width / 3f) {
+                    consumingDoubleTap = true
+                    onDoubleTap(ev.x > width / 2f)
+                    lastTapUp = 0L
+                    return true
+                }
+            }
+            MotionEvent.ACTION_UP -> {
+                lastTapUp = ev.eventTime
+                lastTapX = ev.x
+            }
+        }
+        return false
+    }
+
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(ev: MotionEvent): Boolean {
+        if (consumingDoubleTap) {
+            if (ev.actionMasked == MotionEvent.ACTION_UP || ev.actionMasked == MotionEvent.ACTION_CANCEL) consumingDoubleTap = false
+            return true
+        }
         if (track == Track.NONE) return false
         tracker?.addMovement(ev)
         val dy = ev.y - downY

@@ -32,7 +32,7 @@ import kotlinx.serialization.json.Json
 class PlayerExtras(
     private val context: Context,
     private val player: WebViewHolder,
-    private val settings: SettingsRepository,
+    val settings: SettingsRepository,
     private val json: Json,
     private val scope: CoroutineScope,
 ) {
@@ -45,6 +45,9 @@ class PlayerExtras(
     @Serializable
     private data class Ryd(val id: String = "", val dislikes: Long = 0)
 
+    /** SponsorBlock segments of the current video, for the native segment strip. */
+    val segments = kotlinx.coroutines.flow.MutableStateFlow<Pair<String, List<BridgeCommand.Segment>>>("" to emptyList())
+
     private var sbKey = ""
     private var rydKey = ""
 
@@ -53,7 +56,7 @@ class PlayerExtras(
             combine(player.video.map { it.videoId }.distinctUntilChanged(), settings.settings) { id, s -> id to s }
                 .collect { (id, s) ->
                     if (id.isEmpty()) return@collect
-                    player.sendSticky(BridgeCommand.PlayerPrefs(quality = quality(s), speed = s.speed.toDouble()))
+                    player.sendSticky(BridgeCommand.PlayerPrefs(quality = quality(s), speed = s.speed.toDouble(), originalAudio = s.originalAudio, noAutoCaptions = s.noAutoCaptions))
                     sponsorBlock(id, s)
                     dislikes(id, s)
                 }
@@ -73,6 +76,7 @@ class PlayerExtras(
         sbKey = key
         if (!s.sponsorBlock || s.sponsorCategories.isEmpty()) {
             player.sendSticky(BridgeCommand.SponsorSegments(videoId, emptyList()))
+            segments.value = videoId to emptyList()
             return
         }
         scope.launch {
@@ -81,7 +85,10 @@ class PlayerExtras(
                 .getOrDefault(emptyList())
             Log.i(TAG, "SponsorBlock $videoId: ${segments.size} segments")
             withContext(Dispatchers.Main) {
-                if (player.video.value.videoId == videoId) player.sendSticky(BridgeCommand.SponsorSegments(videoId, segments))
+                if (player.video.value.videoId == videoId) {
+                    player.sendSticky(BridgeCommand.SponsorSegments(videoId, segments))
+                    this@PlayerExtras.segments.value = videoId to segments
+                }
             }
         }
     }

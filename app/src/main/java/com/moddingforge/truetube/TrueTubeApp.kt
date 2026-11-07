@@ -37,6 +37,11 @@ class TrueTubeApp : Application() {
     }
 }
 
+/** One-shot requests from outside the shell (shortcuts) to the Compose UI. */
+sealed interface ShellRequest {
+    data object OpenSearch : ShellRequest
+}
+
 /** Manual DI container. Everything here lives as long as the process. */
 class AppContainer(app: Application) {
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -46,6 +51,8 @@ class AppContainer(app: Application) {
         encodeDefaults = true
     }
     val settings = SettingsRepository(app, appScope)
+    /** Pending request for the shell; consumed (set to null) by AppShell. */
+    val shellRequests = kotlinx.coroutines.flow.MutableStateFlow<ShellRequest?>(null)
     val filterRepository = FilterRepository(app, json, appScope, debug = BuildConfig.DEBUG, settings = settings)
     /** Feed WebView: everything except watch pages. */
     val feed = WebViewHolder(app, json, filterRepository, appScope, Role.FEED, settings)
@@ -80,6 +87,11 @@ class AppContainer(app: Application) {
     }
 
     private fun userCss(s: AppSettings): String = buildString {
+        if (s.amoled) {
+            // YouTube dark theme -> pure black (its colours are CSS variables).
+            append("@media (prefers-color-scheme: dark) { html { --yt-spec-base-background: #000 !important; --yt-spec-general-background-a: #000 !important; ")
+            append("--yt-spec-brand-background-solid: #000 !important; --yt-spec-raised-background: #0f0f0f !important; } html, body, ytm-app { background: #000 !important; } }\n")
+        }
         if (s.hideComments) {
             // The comment teaser under the video is a "metadata carousel" in current m.youtube.
             append("yt-video-metadata-carousel-view-model, ")

@@ -24,6 +24,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.ui.draw.clipToBounds
+import com.moddingforge.truetube.playback.PlayerExtras
+import com.moddingforge.truetube.web.BridgeCommand
 import android.media.AudioManager
 import android.provider.Settings
 import android.view.WindowManager
@@ -91,11 +93,17 @@ private val MiniWidth = MiniPlayerHeight * 16 / 9
 @Composable
 fun PlayerLayer(
     controller: PlayerController,
+    extras: PlayerExtras,
     activity: ComponentActivity,
     miniBottomPadding: Dp,
 ) {
     val mode by controller.mode.collectAsStateWithLifecycle()
     if (mode == PlayerMode.HIDDEN) return
+    val sbSegments by extras.segments.collectAsStateWithLifecycle()
+    var toolsOpen by remember { mutableStateOf(false) }
+    var toolsShownAt by remember { mutableLongStateOf(0L) }
+    var seekHint by remember { mutableStateOf("") }
+    var seekHintAt by remember { mutableLongStateOf(0L) }
 
     val player = controller.player
     val state by player.state.collectAsStateWithLifecycle()
@@ -257,6 +265,14 @@ fun PlayerLayer(
                                 layout.onSwipeDownFullscreen = { controller.setFullscreen(false, explicit = true) }
                                 layout.onAdjust = { kind, delta -> adjust.change(kind, delta) }
                                 layout.onAdjustEnd = { adjust.end() }
+                                layout.doubleTapSeconds = if (expanded && !pip) extras.settings.current.doubleTapSeconds else 0
+                                layout.onDoubleTap = { forward ->
+                                    val n = extras.settings.current.doubleTapSeconds
+                                    player.send(BridgeCommand.PlayerTool("seek-by", (if (forward) n else -n).toString()))
+                                    seekHint = if (forward) "+$n s" else "−$n s"
+                                    seekHintAt = System.currentTimeMillis()
+                                }
+                                layout.onAnyTouch = { toolsShownAt = System.currentTimeMillis() }
                             },
                             onRelease = { layout ->
                                 android.util.Log.i("TT.Player", "player AndroidView released")
@@ -268,6 +284,18 @@ fun PlayerLayer(
                     }
                     // Mini: the video is only a thumbnail - taps go to the native bar, not the page.
                     if (!expanded) Box(Modifier.matchParentSize().clickable { controller.expand() })
+
+                    // Native layer over the video (expanded / fullscreen, not PiP): SponsorBlock strip,
+                    // tools button, double-tap hint. Independent of YouTube's player DOM.
+                    if (expanded && !pip) {
+                        val videoBox = if (fullscreen) Modifier.fillMaxSize() else Modifier.fillMaxWidth().height(screenWidth * 9 / 16)
+                        Box(videoBox) {
+                            SegmentStrip(sbSegments, video.videoId, video.duration, Modifier.align(Alignment.BottomStart))
+                            ToolsButton(visibleSince = toolsShownAt, onClick = { toolsOpen = true },
+                                modifier = Modifier.align(Alignment.TopEnd).padding(top = 6.dp, end = 52.dp))
+                            SeekHint(seekHint, seekHintAt, Modifier.align(Alignment.Center))
+                        }
+                    }
                 }
 
                 if (!expanded) {
@@ -301,6 +329,15 @@ fun PlayerLayer(
             }
             if (fullscreen) AdjustIndicator(adjust, Modifier.align(Alignment.Center))
         }
+    }
+
+    if (toolsOpen) {
+        PlayerToolsSheet(
+            player = player,
+            video = video,
+            onPip = { toolsOpen = false; enterPip(activity) },
+            onDismiss = { toolsOpen = false },
+        )
     }
 }
 

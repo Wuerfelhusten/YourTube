@@ -115,6 +115,11 @@ fun AppShell(
     val playerMode by controller.mode.collectAsStateWithLifecycle()
     val page = if (state.url.isEmpty()) Page.HOME else Page.of(state.url)
     var searchOpen by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        container.shellRequests.collect { r ->
+            if (r == com.moddingforge.truetube.ShellRequest.OpenSearch) { searchOpen = true; container.shellRequests.value = null }
+        }
+    }
     val wide = LocalConfiguration.current.screenWidthDp >= 600
     val dark = isSystemInDarkTheme()
     val tabBarShown = !wide && page.showsTabBar
@@ -170,6 +175,7 @@ fun AppShell(
     // Player above the feed: full screen, or the mini bar right above the tab bar.
     PlayerLayer(
         controller = controller,
+        extras = container.playerExtras,
         activity = activity,
         miniBottomPadding = navInset + if (tabBarShown) TabBarHeight + 1.dp else 0.dp,
     )

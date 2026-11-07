@@ -51,6 +51,15 @@ data class AppSettings(
     /** Hide videos whose title or channel contains one of these (one per line, case-insensitive). */
     val filterKeywords: String = "",
     val deArrow: Boolean = false,
+    // player behaviour
+    val originalAudio: Boolean = true,
+    val noAutoCaptions: Boolean = false,
+    val doubleTapSeconds: Int = 10,
+    // app
+    /** home | subscriptions | library | history */
+    val startPage: String = "home",
+    val materialYou: Boolean = false,
+    val amoled: Boolean = false,
 )
 
 private val Context.settingsStore by preferencesDataStore(name = "settings")
@@ -86,6 +95,12 @@ class SettingsRepository(context: Context, private val scope: CoroutineScope) {
         val fMinDur = intPreferencesKey("filter_min_duration")
         val fKeywords = stringPreferencesKey("filter_keywords")
         val deArrow = booleanPreferencesKey("dearrow")
+        val origAudio = booleanPreferencesKey("original_audio")
+        val noCaptions = booleanPreferencesKey("no_auto_captions")
+        val dtSeconds = intPreferencesKey("double_tap_seconds")
+        val startPage = stringPreferencesKey("start_page")
+        val materialYou = booleanPreferencesKey("material_you")
+        val amoled = booleanPreferencesKey("amoled")
     }
 
     private fun Preferences.toSettings() = AppSettings(
@@ -111,6 +126,12 @@ class SettingsRepository(context: Context, private val scope: CoroutineScope) {
         filterMinDuration = this[Keys.fMinDur] ?: 0,
         filterKeywords = this[Keys.fKeywords] ?: "",
         deArrow = this[Keys.deArrow] ?: false,
+        originalAudio = this[Keys.origAudio] ?: true,
+        noAutoCaptions = this[Keys.noCaptions] ?: false,
+        doubleTapSeconds = this[Keys.dtSeconds] ?: 10,
+        startPage = this[Keys.startPage] ?: "home",
+        materialYou = this[Keys.materialYou] ?: false,
+        amoled = this[Keys.amoled] ?: false,
     )
 
     private val initial: AppSettings = runBlocking { store.data.first().toSettings() }
@@ -146,6 +167,12 @@ class SettingsRepository(context: Context, private val scope: CoroutineScope) {
                 p[Keys.fMinDur] = s.filterMinDuration
                 p[Keys.fKeywords] = s.filterKeywords
                 p[Keys.deArrow] = s.deArrow
+                p[Keys.origAudio] = s.originalAudio
+                p[Keys.noCaptions] = s.noAutoCaptions
+                p[Keys.dtSeconds] = s.doubleTapSeconds
+                p[Keys.startPage] = s.startPage
+                p[Keys.materialYou] = s.materialYou
+                p[Keys.amoled] = s.amoled
             }
         }
     }
