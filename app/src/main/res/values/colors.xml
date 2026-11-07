@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="tt_brand">#FF7C4DFF</color>
+    <color name="tt_brand_dark">#FF4B2BB5</color>
+    <color name="tt_background">#FFFFFFFF</color>
+    <color name="tt_icon_bg">#FF1B1530</color>
+</resources>
