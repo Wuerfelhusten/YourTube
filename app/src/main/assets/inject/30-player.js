@@ -55,6 +55,23 @@
 
   if (TT_CONFIG.role !== 'player') return;
 
+  // --- background playback -------------------------------------------------------------------
+  // YouTube pauses when the page becomes hidden (screen off, app in background). The player page
+  // always claims to be visible; the native side keeps the WebView running and shows a media
+  // notification (PlaybackService).
+  try {
+    Object.defineProperty(document, 'hidden', { get: () => false, configurable: true });
+    Object.defineProperty(document, 'webkitHidden', { get: () => false, configurable: true });
+    Object.defineProperty(document, 'visibilityState', { get: () => 'visible', configurable: true });
+    Object.defineProperty(document, 'webkitVisibilityState', { get: () => 'visible', configurable: true });
+    document.hasFocus = () => true;
+  } catch (e) { /* ignore */ }
+  for (const type of ['visibilitychange', 'webkitvisibilitychange', 'freeze']) {
+    // Registered at document start = before YouTube's listeners; capture phase on window first.
+    window.addEventListener(type, (e) => { e.stopImmediatePropagation(); }, true);
+    document.addEventListener(type, (e) => { e.stopImmediatePropagation(); }, true);
+  }
+
   // --- fullscreen ----------------------------------------------------------------------------
   // The WebView offers no HTML fullscreen (and it would need a user gesture, so rotate-to-
   // fullscreen could never work). TrueTube provides the Fullscreen API itself: YouTube shows its
@@ -162,6 +179,11 @@
     const v = document.querySelector('video');
     const p = document.getElementById('movie_player');
     if (!v) return;
+    if (cmd.action === 'seek') {
+      try { p && p.seekTo ? p.seekTo(cmd.position, true) : (v.currentTime = cmd.position); } catch (e) { v.currentTime = cmd.position; }
+      setTimeout(() => report(true), 200);
+      return;
+    }
     const play = cmd.action === 'play' || (cmd.action === 'toggle' && v.paused);
     try {
       if (play) { p && p.playVideo ? p.playVideo() : v.play(); } else { p && p.pauseVideo ? p.pauseVideo() : v.pause(); }

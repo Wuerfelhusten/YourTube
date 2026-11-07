@@ -1,8 +1,28 @@
 package com.moddingforge.truetube.ui
 
+import android.Manifest
+import android.app.PendingIntent
+import android.app.PictureInPictureParams
+import android.app.RemoteAction
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ActivityInfo
+import android.content.pm.PackageManager
+import android.content.res.Configuration
+import android.graphics.drawable.Icon
+import android.os.Build
 import android.os.Bundle
+import android.util.Rational
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import com.moddingforge.truetube.R
+import com.moddingforge.truetube.web.PlayerMode
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import android.provider.Settings
 import android.view.OrientationEventListener
 import androidx.lifecycle.Lifecycle
@@ -22,6 +42,8 @@ import com.moddingforge.truetube.ui.theme.TrueTubeTheme
 import com.moddingforge.truetube.web.Role
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
+private const val PIP_ACTION_TOGGLE = "com.moddingforge.truetube.PIP_TOGGLE"
 
 class MainActivity : ComponentActivity() {
 
@@ -59,6 +81,90 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+
+        // PiP parameters follow the player: auto-enter only while a video plays in the expanded player.
+        lifecycleScope.launch {
+            combine(container.playerController.mode, container.player.video.map { it.playing }.distinctUntilChanged()) { _, _ -> }
+                .collect { updatePipParams() }
+        }
+
+        // Background playback needs the media notification (Android 13+ asks once, on the first video).
+        lifecycleScope.launch {
+            container.playerController.mode.first { it != PlayerMode.HIDDEN }
+            requestNotificationPermission()
+        }
+
+        pipReceiver.register()
+    }
+
+    override fun onDestroy() {
+        pipReceiver.unregister()
+        super.onDestroy()
+    }
+
+    // --- picture-in-picture --------------------------------------------------------------------
+
+    private fun pipParams(): PictureInPictureParams {
+        val playing = container.player.video.value.playing
+        val action = RemoteAction(
+            Icon.createWithResource(this, if (playing) R.drawable.ic_pip_pause else R.drawable.ic_pip_play),
+            getString(if (playing) R.string.pause else R.string.play),
+            getString(if (playing) R.string.pause else R.string.play),
+            PendingIntent.getBroadcast(
+                this, 1, Intent(PIP_ACTION_TOGGLE).setPackage(packageName),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            ),
+        )
+        return PictureInPictureParams.Builder()
+            .setAspectRatio(Rational(16, 9))
+            .setActions(listOf(action))
+            .apply { if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) setAutoEnterEnabled(container.playerController.canEnterPip) }
+            .build()
+    }
+
+    private fun updatePipParams() {
+        runCatching { setPictureInPictureParams(pipParams()) }
+    }
+
+    /** Android < 12 has no auto-enter: enter PiP when the user leaves (Home / recents). */
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S && container.playerController.canEnterPip) {
+            runCatching { enterPictureInPictureMode(pipParams()) }
+        }
+    }
+
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        container.playerController.setPip(isInPictureInPictureMode)
+        if (!isInPictureInPictureMode) {
+            // PiP window closed (not expanded back into the app): stop like the official app.
+            window.decorView.postDelayed({
+                if (!lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) container.playerController.pause()
+            }, 500)
+        }
+    }
+
+    private val pipReceiver = PipReceiver()
+
+    private inner class PipReceiver : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == PIP_ACTION_TOGGLE) container.playerController.togglePlay()
+        }
+
+        fun register() = ContextCompat.registerReceiver(
+            this@MainActivity, this, IntentFilter(PIP_ACTION_TOGGLE), ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+
+        fun unregister() = runCatching { unregisterReceiver(this) }
+    }
+
+    private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) return
+        notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 
     /**

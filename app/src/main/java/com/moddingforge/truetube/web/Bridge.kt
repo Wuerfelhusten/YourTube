@@ -69,9 +69,9 @@ sealed interface BridgeCommand {
     @Serializable @SerialName("scroll-top")
     data object ScrollTop : BridgeCommand
 
-    /** Player: play | pause | toggle */
+    /** Player: play | pause | toggle | seek (with [position] in seconds) */
     @Serializable @SerialName("player-control")
-    data class PlayerControl(val action: String) : BridgeCommand
+    data class PlayerControl(val action: String, val position: Double = 0.0) : BridgeCommand
 
     /** Player: enter/leave YouTube's fullscreen layout (native rotation, Back, swipe). */
     @Serializable @SerialName("player-fullscreen")

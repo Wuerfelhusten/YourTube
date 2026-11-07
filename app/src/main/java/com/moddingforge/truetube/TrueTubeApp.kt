@@ -4,6 +4,7 @@ import android.app.Application
 import android.webkit.WebView
 import com.moddingforge.truetube.adblock.AdblockUpdateWorker
 import com.moddingforge.truetube.adblock.FilterRepository
+import com.moddingforge.truetube.playback.PlaybackConnector
 import com.moddingforge.truetube.web.PlayerController
 import com.moddingforge.truetube.web.Role
 import com.moddingforge.truetube.web.WebViewHolder
@@ -41,4 +42,6 @@ class AppContainer(app: Application) {
     /** Player WebView: watch pages only (full screen or mini player). */
     val player = WebViewHolder(app, json, filterRepository, appScope, Role.PLAYER)
     val playerController = PlayerController(feed, player)
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+    val playbackConnector = PlaybackConnector(app, playerController, appScope)
 }

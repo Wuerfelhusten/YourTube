@@ -34,6 +34,21 @@ class PlayerController(
     private val _orientationLock = MutableStateFlow(OrientationLock.NONE)
     val orientationLock: StateFlow<OrientationLock> = _orientationLock.asStateFlow()
 
+    /** The activity is shown as picture-in-picture (set by MainActivity). */
+    private val _pip = MutableStateFlow(false)
+    val pip: StateFlow<Boolean> = _pip.asStateFlow()
+
+    fun setPip(on: Boolean) {
+        Log.i(TAG, "pip $on")
+        _pip.value = on
+    }
+
+    /** Leaving the app with an open, playing video -> picture-in-picture (official app). */
+    val canEnterPip: Boolean
+        get() = _mode.value == PlayerMode.EXPANDED && player.video.value.playing
+
+    fun pause() = player.send(BridgeCommand.PlayerControl("pause"))
+
     init {
         feed.onOpenVideo = ::openVideo
         player.onOpenInFeed = { url ->

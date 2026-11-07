@@ -108,12 +108,20 @@ fun PlayerLayer(
     /** Last pixel size of the WebView in the expanded player; reused (scaled) in mini mode. */
     var expandedSize by remember { mutableStateOf<IntSize?>(null) }
     val fullscreenWanted by controller.fullscreen.collectAsStateWithLifecycle()
-    val fullscreen = expanded && fullscreenWanted
+    val pipState by controller.pip.collectAsStateWithLifecycle()
+    // The PiP window's config change arrives before onPictureInPictureModeChanged: ask the activity
+    // directly so the first PiP frame is already laid out as PiP.
+    val pip = pipState || activity.isInPictureInPictureMode
+    val fullscreen = expanded && fullscreenWanted && !pip
+    /** Last WebView size outside PiP; PiP shows it frozen and scaled (no viewport change = no pause). */
+    var liveSize by remember { mutableStateOf<IntSize?>(null) }
+    var liveWasFullscreen by remember { mutableStateOf(false) }
 
     // Rotation drives fullscreen like in the official app.
-    LaunchedEffect(portrait) { controller.onRotated(landscape = !portrait) }
+    // (The 16:9 PiP window counts as "landscape" - that is not a rotation.)
+    LaunchedEffect(portrait) { if (!activity.isInPictureInPictureMode) controller.onRotated(landscape = !portrait) }
 
-    BackHandler(enabled = expanded) { controller.minimize() }
+    BackHandler(enabled = expanded && !pip) { controller.minimize() }
     // Registered later = higher priority: in fullscreen, Back leaves fullscreen first.
     BackHandler(enabled = fullscreen) { controller.setFullscreen(false, explicit = true) }
 
@@ -126,7 +134,7 @@ fun PlayerLayer(
         val screenWidth = maxWidth
         val progress = (drag.value / fullHeightPx).coerceIn(0f, 1f)
 
-        val container = if (fullscreen) {
+        val container = if (pip || fullscreen) {
             Modifier.fillMaxSize().background(Color.Black)
         } else if (expanded) {
             Modifier
@@ -169,6 +177,7 @@ fun PlayerLayer(
                 // Same composition slot in both modes -> the WebView is never re-created.
                 Box(
                     when {
+                        pip -> Modifier.weight(1f).fillMaxHeight().clipToBounds()
                         fullscreen -> Modifier.weight(1f).fillMaxHeight()
                         expanded -> Modifier.weight(1f).fillMaxHeight().navigationBarsPadding()
                         else -> Modifier.width(MiniWidth).fillMaxHeight().clipToBounds()
@@ -178,8 +187,29 @@ fun PlayerLayer(
                     // keeps exactly its expanded size and is only *drawn* scaled down; the clip
                     // shows the top 16:9 strip, which is the (fixed, sticky) player.
                     val fullWidth = screenWidth
-                    val webModifier = if (expanded) {
-                        Modifier.fillMaxSize().onSizeChanged { if (it.height > 0 && !fullscreen) expandedSize = it }
+                    val frozen = liveSize
+                    val webModifier = if (pip && frozen != null) {
+                        // PiP: same trick as the mini player - frozen size, scaled to the PiP width.
+                        val s = screenWidth / with(density) { frozen.width.toDp() }
+                        val pipHeightPx = fullHeightPx
+                        Modifier
+                            .wrapContentSize(Alignment.TopStart, unbounded = true)
+                            .requiredSize(with(density) { frozen.width.toDp() }, with(density) { frozen.height.toDp() })
+                            .graphicsLayer {
+                                scaleX = s
+                                scaleY = s
+                                transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f)
+                                // Fullscreen: the video is centred in the frozen page; portrait: it's the top strip.
+                                translationY = if (liveWasFullscreen) (pipHeightPx - frozen.height * s) / 2f else 0f
+                            }
+                    } else if (expanded) {
+                        Modifier.fillMaxSize().onSizeChanged {
+                            if (it.height > 0 && !activity.isInPictureInPictureMode) {
+                                liveSize = it
+                                liveWasFullscreen = fullscreen
+                                if (!fullscreen) expandedSize = it
+                            }
+                        }
                     } else {
                         val s = MiniWidth / fullWidth
                         val size = expandedSize
@@ -218,8 +248,9 @@ fun PlayerLayer(
                             },
                             update = { layout ->
                                 layout.mode = when {
+                                    pip -> PlayerDragLayout.GestureMode.NONE
                                     fullscreen -> PlayerDragLayout.GestureMode.FULLSCREEN
-                                    expanded && portrait -> PlayerDragLayout.GestureMode.PORTRAIT
+                                    expanded && portrait && !pip -> PlayerDragLayout.GestureMode.PORTRAIT
                                     else -> PlayerDragLayout.GestureMode.NONE
                                 }
                                 layout.onSwipeUp = { controller.setFullscreen(true, explicit = true) }

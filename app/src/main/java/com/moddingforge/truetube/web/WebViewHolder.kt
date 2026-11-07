@@ -272,9 +272,11 @@ class WebViewHolder(
         }
     }
 
+    /** Player: keep running while the app is in the background (background playback / PiP). */
+    var keepRunningInBackground = false
+
     fun onStop() {
-        // M6 will keep the WebView running while a video plays in the background.
-        webView?.onPause()
+        if (!keepRunningInBackground) webView?.onPause()
         CookieManager.getInstance().flush()
     }
 
@@ -291,7 +293,8 @@ class WebViewHolder(
     private fun create(): WebView {
         hookServiceWorker()
         val context: Context = contextWrapper
-        return WebView(context).apply wv@{
+        return TrueWebView(context).apply wv@{
+            keepVisible = { keepRunningInBackground }
             layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             setBackgroundColor(Color.TRANSPARENT)
             configureSettings(settings)

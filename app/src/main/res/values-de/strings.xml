@@ -12,4 +12,6 @@
     <string name="tab_shorts">Shorts</string>
     <string name="tab_subscriptions">Abos</string>
     <string name="tab_you">Du</string>
+    <string name="play">Abspielen</string>
+    <string name="pause">Pausieren</string>
 </resources>

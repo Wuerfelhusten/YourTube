@@ -133,6 +133,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.work.runtime)
     implementation(libs.androidx.swiperefreshlayout)
+    implementation(libs.androidx.media3.session)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
