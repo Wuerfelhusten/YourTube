@@ -142,7 +142,6 @@ fun AppShell(
                     onSearch = { searchOpen = true },
                     onBack = { holder.goBack() },
                     signedIn = state.signedIn,
-                    onSettings = controller::openSettings,
                     onOpen = holder::load,
                     onSignIn = holder::signIn,
                 )
@@ -245,7 +244,6 @@ private fun TopBar(
     onSearch: () -> Unit,
     onBack: () -> Unit,
     signedIn: Boolean,
-    onSettings: () -> Unit,
     onOpen: (String) -> Unit,
     onSignIn: () -> Unit,
 ) {
@@ -288,9 +286,8 @@ private fun TopBar(
         Box {
             IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, stringResource(R.string.more)) }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                // TrueTube on top, then the entries of m.youtube's own (now hidden) top bar menu.
-                DropdownMenuItem(text = { Text(stringResource(R.string.settings_title)) }, onClick = { menu = false; onSettings() })
-                HorizontalDivider()
+                // The entries of m.youtube's own (now hidden) top bar menu. TrueTube Settings is
+                // reached via YouTube settings (entry at the top of that page).
                 if (!signedIn) {
                     DropdownMenuItem(text = { Text(stringResource(R.string.menu_sign_in)) }, onClick = { menu = false; onSignIn() })
                 }
