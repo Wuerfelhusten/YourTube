@@ -1,0 +1,25 @@
+[package]
+name = "truetube_adblock"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "MPL-2.0"
+description = "JNI bridge between TrueTube and Brave's adblock-rust engine"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+# default features minus "single-thread": makes Engine Send + Sync, because WebView calls
+# shouldInterceptRequest from several background threads at once.
+adblock = { version = "=0.13.5", default-features = false, features = ["embedded-domain-resolver", "full-regex-handling"] }
+jni = "0.21.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

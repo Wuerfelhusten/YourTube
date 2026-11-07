@@ -23,6 +23,14 @@ sealed interface BridgeMessage {
 
     @Serializable @SerialName("log")
     data class Log(val level: String = "info", val message: String) : BridgeMessage
+
+    /** New CSS classes/ids on the page, for generic cosmetic filtering. */
+    @Serializable @SerialName("cosmetic-classids")
+    data class CosmeticClassIds(val host: String, val classes: List<String> = emptyList(), val ids: List<String> = emptyList()) : BridgeMessage
+
+    /** The fallback script had to skip a video ad (blocking missed it). */
+    @Serializable @SerialName("ad-skipped")
+    data object AdSkipped : BridgeMessage
 }
 
 /** Commands sent from the app to the injected JS. */
@@ -30,6 +38,10 @@ sealed interface BridgeMessage {
 sealed interface BridgeCommand {
     @Serializable @SerialName("ping")
     data class Ping(val nonce: Long) : BridgeCommand
+
+    /** Generic hide selectors the engine returned for reported classes/ids. */
+    @Serializable @SerialName("cosmetic-hide")
+    data class CosmeticHide(val selectors: List<String>) : BridgeCommand
 }
 
 /**

@@ -1,5 +1,6 @@
 package com.moddingforge.truetube.ui
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -19,8 +20,13 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -47,6 +53,19 @@ class MainActivity : ComponentActivity() {
                 BrowserScreen(holder, this)
             }
         }
+        handleDebugIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleDebugIntent(intent)
+    }
+
+    /** Debug builds: `adb shell am start -n <pkg>/.ui.MainActivity --es tt_url <url>` opens a URL. */
+    private fun handleDebugIntent(intent: Intent?) {
+        if (!BuildConfig.DEBUG) return
+        val url = intent?.getStringExtra("tt_url") ?: return
+        window.decorView.post { holder.load(url) }
     }
 
     override fun onStart() {
@@ -95,20 +114,30 @@ private fun BrowserScreen(holder: WebViewHolder, activity: ComponentActivity) {
             )
         }
 
-        if (BuildConfig.DEBUG) DebugChip(state, Modifier.align(Alignment.TopEnd).padding(top = 4.dp))
+        if (BuildConfig.DEBUG) DebugChip(state, holder, Modifier.align(Alignment.TopEnd).padding(top = 4.dp))
     }
 }
 
 /** Debug-only overlay: bridge status and the last URL the bridge reported. */
 @Composable
-private fun DebugChip(state: WebState, modifier: Modifier = Modifier) {
+private fun DebugChip(state: WebState, holder: WebViewHolder, modifier: Modifier = Modifier) {
+    // Counters change on background threads; poll them once a second (debug only).
+    var blocked by remember { mutableIntStateOf(0) }
+    var skipped by remember { mutableIntStateOf(0) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            blocked = holder.adblock.blockedRequests.get()
+            skipped = holder.adblock.skippedAds.get()
+            delay(1_000)
+        }
+    }
     val bridge = when {
         !state.bridgeReady -> "bridge: -"
         state.bridgePingMs >= 0 -> "bridge: ok ${state.bridgePingMs}ms"
         else -> "bridge: ready"
     }
     Text(
-        text = "$bridge | ${if (state.signedIn) "acc: ok" else "acc: -"} | ${state.url.removePrefix("https://").take(32)}",
+        text = "$bridge | ${if (state.signedIn) "acc: ok" else "acc: -"} | ab: $blocked/$skipped | ${state.url.removePrefix("https://").take(24)}",
         color = Color.White,
         fontSize = 9.sp,
         maxLines = 1,

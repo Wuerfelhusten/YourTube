@@ -1,4 +1,5 @@
 import java.util.Properties
+import javax.inject.Inject
 
 plugins {
     alias(libs.plugins.android.application)
@@ -12,9 +13,66 @@ val keystoreProps = Properties().apply {
     if (f.exists()) f.inputStream().use { load(it) }
 }
 
+// --- Native adblock engine (Brave's adblock-rust, see adblock-native/) ------------------------
+
+val ndkVersionPinned = "28.2.13676358"
+val rustAbis = listOf("arm64-v8a", "x86_64")
+
+val sdkDir: String = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}.getProperty("sdk.dir") ?: System.getenv("ANDROID_HOME") ?: error("Android SDK not found: set sdk.dir in local.properties")
+
+/** Runs `cargo ndk` and writes lib<name>.so per ABI into [outputDir]. */
+abstract class CargoNdkTask @Inject constructor(private val exec: ExecOperations) : DefaultTask() {
+    @get:Internal abstract val crateDir: DirectoryProperty
+
+    /** Up-to-date check: crate sources and manifests (not target/). */
+    @get:InputFiles @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val sources: ConfigurableFileCollection
+
+    @get:Input abstract val abis: ListProperty<String>
+    @get:Input abstract val ndkHome: Property<String>
+    @get:Input abstract val minApi: Property<Int>
+
+    @get:OutputDirectory abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun build() {
+        val args = mutableListOf("ndk")
+        abis.get().forEach { args += listOf("-t", it) }
+        args += listOf("-P", minApi.get().toString(), "-o", outputDir.get().asFile.absolutePath, "build", "--release")
+        exec.exec {
+            workingDir = crateDir.get().asFile
+            executable = "cargo"
+            args(args)
+            environment("ANDROID_NDK_HOME", ndkHome.get())
+        }
+    }
+}
+
+val cargoBuildAdblock = tasks.register<CargoNdkTask>("cargoBuildAdblock") {
+    group = "build"
+    description = "Builds adblock-native (Rust) for ${rustAbis.joinToString()} via cargo-ndk"
+    val crate = rootProject.layout.projectDirectory.dir("adblock-native")
+    crateDir.set(crate)
+    sources.from(crate.dir("src"), crate.file("Cargo.toml"), crate.file("Cargo.lock"))
+    abis.set(rustAbis)
+    ndkHome.set(File(sdkDir, "ndk/$ndkVersionPinned").absolutePath)
+    minApi.set(26)
+    outputDir.set(layout.buildDirectory.dir("rustJniLibs"))
+}
+
+androidComponents {
+    onVariants { variant ->
+        variant.sources.jniLibs?.addGeneratedSourceDirectory(cargoBuildAdblock, CargoNdkTask::outputDir)
+    }
+}
+
 android {
     namespace = "com.moddingforge.truetube"
     compileSdk = 37
+    ndkVersion = ndkVersionPinned
 
     defaultConfig {
         applicationId = "com.moddingforge.truetube"
@@ -22,6 +80,9 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
+
+        // Only the ABIs we build the Rust library for.
+        ndk { abiFilters += rustAbis }
     }
 
     signingConfigs {

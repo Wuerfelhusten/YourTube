@@ -13,3 +13,7 @@
 /keystore.properties
 *.jks
 *.keystore
+# Rust build output
+/adblock-native/target/
+# Generated adblock snapshot (node tools/adblock/build-snapshot.mjs)
+/app/src/main/assets/adblock/

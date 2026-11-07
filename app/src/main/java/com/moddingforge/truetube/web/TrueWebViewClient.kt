@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import android.util.Log
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 
@@ -38,6 +39,10 @@ class TrueWebViewClient(private val holder: WebViewHolder) : WebViewClient() {
             Log.w(TAG, "No app for ${decision.uri}", e)
         }
     }
+
+    /** Brave engine network check. Called on WebView background threads. */
+    override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =
+        holder.adblock.intercept(request)
 
     override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
         holder.onPageStarted(view, url)

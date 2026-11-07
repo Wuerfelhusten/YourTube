@@ -8,12 +8,23 @@ import android.graphics.Color
 import android.util.Log
 import android.view.ViewGroup
 import android.webkit.CookieManager
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebStorage
 import android.webkit.WebView
+import androidx.webkit.ServiceWorkerClientCompat
+import androidx.webkit.ServiceWorkerControllerCompat
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewFeature
 import com.moddingforge.truetube.BuildConfig
+import com.moddingforge.truetube.adblock.EngineState
+import com.moddingforge.truetube.adblock.FilterRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -44,6 +55,8 @@ data class WebState(
 class WebViewHolder(
     private val app: Application,
     private val json: Json,
+    private val filters: FilterRepository,
+    scope: CoroutineScope,
 ) {
     private val contextWrapper = MutableContextWrapper(app)
     private var webView: WebView? = null
@@ -53,8 +66,28 @@ class WebViewHolder(
 
     val bridge = Bridge(json, ::onBridgeMessage)
     val injector = ScriptInjector(app.assets, json, InjectConfig(version = BuildConfig.VERSION_CODE, debug = BuildConfig.DEBUG))
+    val adblock = AdblockIntegration(filters, json)
 
     private var pingSentAt = 0L
+
+    /** First URL to load, held back until the adblock engine is ready (or failed / timed out). */
+    private var pendingInitialUrl: String? = null
+    private var adblockSettled = false
+
+    init {
+        scope.launch(Dispatchers.Main.immediate) {
+            // Give the engine a moment so the very first page already gets Brave's scriptlets.
+            withTimeoutOrNull(ENGINE_WAIT_MS) { filters.state.first { it !is EngineState.Loading } }
+            filters.state.collect { st ->
+                adblockSettled = true
+                if (st is EngineState.Ready) webView?.let { adblock.install(it, st.engine) }
+                pendingInitialUrl?.let { url ->
+                    pendingInitialUrl = null
+                    webView?.loadUrl(url)
+                }
+            }
+        }
+    }
 
     /** Returns the WebView, re-parented for [activity]. Creates it on first use. */
     fun attach(activity: Activity): WebView {
@@ -71,11 +104,17 @@ class WebViewHolder(
 
     fun loadIfEmpty(url: String = UrlRouter.HOME) {
         val wv = webView ?: return
-        if (wv.url == null) wv.loadUrl(url)
+        if (wv.url == null && pendingInitialUrl == null) load(url)
     }
 
     fun load(url: String) {
-        webView?.loadUrl(url)
+        val wv = webView ?: return
+        if (!adblockSettled) {
+            pendingInitialUrl = url
+            _state.update { it.copy(progress = 5) }
+        } else {
+            wv.loadUrl(url)
+        }
     }
 
     /** @return true if the WebView navigated back. */
@@ -123,7 +162,19 @@ class WebViewHolder(
         CookieManager.getInstance().flush()
     }
 
+    private var serviceWorkerHooked = false
+
+    /** Requests made by YouTube's service worker bypass WebViewClient; route them through the engine too. */
+    private fun hookServiceWorker() {
+        if (serviceWorkerHooked || !WebViewFeature.isFeatureSupported(WebViewFeature.SERVICE_WORKER_SHOULD_INTERCEPT_REQUEST)) return
+        ServiceWorkerControllerCompat.getInstance().setServiceWorkerClient(object : ServiceWorkerClientCompat() {
+            override fun shouldInterceptRequest(request: WebResourceRequest): WebResourceResponse? = adblock.intercept(request)
+        })
+        serviceWorkerHooked = true
+    }
+
     private fun create(): WebView {
+        hookServiceWorker()
         val context: Context = contextWrapper
         return WebView(context).apply wv@{
             layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
@@ -140,6 +191,8 @@ class WebViewHolder(
 
             injector.install(this)
             bridge.install(this)
+            // Order matters: the core bundle first, then Brave's per-host scripts.
+            filters.engine?.let { adblock.install(this, it) }
         }
     }
 
@@ -169,6 +222,7 @@ class WebViewHolder(
     // --- callbacks from clients -------------------------------------------------------------
 
     internal fun onPageStarted(view: WebView, url: String) {
+        adblock.pageUrl = url
         bridge.reset()
         _state.update { it.copy(url = url, bridgeReady = false) }
         injector.injectFallback(view)
@@ -199,6 +253,7 @@ class WebViewHolder(
         view.destroy()
         if (webView === view) webView = null
         bridge.reset()
+        adblock.reset()
         _state.update { WebState(url = lastUrl.orEmpty(), generation = it.generation + 1) }
         pendingUrl = lastUrl
     }
@@ -221,7 +276,19 @@ class WebViewHolder(
                 Log.i(Bridge.TAG, "pong after ${rtt}ms")
                 _state.update { it.copy(bridgePingMs = rtt) }
             }
+            is BridgeMessage.CosmeticClassIds -> {
+                val selectors = adblock.classIdSelectors(msg.host, msg.classes, msg.ids)
+                if (selectors.isNotEmpty()) {
+                    if (BuildConfig.DEBUG) Log.d(TAG, "generic hide: ${selectors.size} selectors for ${msg.classes.size} classes/${msg.ids.size} ids")
+                    bridge.send(BridgeCommand.CosmeticHide(selectors))
+                }
+            }
+            BridgeMessage.AdSkipped -> {
+                val n = adblock.skippedAds.incrementAndGet()
+                Log.w(TAG, "fallback skipped a video ad (#$n) on ${_state.value.url}")
+            }
             is BridgeMessage.Navigation -> {
+                adblock.pageUrl = msg.url
                 Log.i(Bridge.TAG, "navigation ${msg.url} | ${msg.title}")
                 _state.update { it.copy(url = msg.url, title = msg.title, canGoBack = webView?.canGoBack() ?: false) }
                 refreshSignIn()
@@ -235,6 +302,7 @@ class WebViewHolder(
 
     companion object {
         private const val TAG = "TT.WebView"
+        private const val ENGINE_WAIT_MS = 3_000L
     }
 }
 
