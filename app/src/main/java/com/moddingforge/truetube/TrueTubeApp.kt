@@ -2,6 +2,7 @@ package com.moddingforge.truetube
 
 import android.app.Application
 import android.webkit.WebView
+import com.moddingforge.truetube.adblock.AdblockUpdateWorker
 import com.moddingforge.truetube.adblock.FilterRepository
 import com.moddingforge.truetube.web.WebViewHolder
 import kotlinx.coroutines.CoroutineScope
@@ -20,6 +21,7 @@ class TrueTubeApp : Application() {
         if (BuildConfig.DEBUG) WebView.setWebContentsDebuggingEnabled(true)
         // Build the adblock engine in the background right away.
         container.filterRepository.load()
+        AdblockUpdateWorker.schedule(this)
     }
 }
 

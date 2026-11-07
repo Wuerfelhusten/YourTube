@@ -26,7 +26,9 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.moddingforge.truetube.adblock.AdblockUpdateWorker
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -61,12 +63,21 @@ class MainActivity : ComponentActivity() {
         handleDebugIntent(intent)
     }
 
-    /** Debug builds: `adb shell am start -n <pkg>/.ui.MainActivity --es tt_url <url>` opens a URL. */
+    /**
+     * Debug builds only (`adb shell am start -n <pkg>/.ui.MainActivity --es <extra> <value>`):
+     *  - tt_url <url>                 open a URL
+     *  - tt_adblock_update now|force  run the list update worker / update + force an engine rebuild
+     */
     private fun handleDebugIntent(intent: Intent?) {
-        if (!BuildConfig.DEBUG) return
-        val url = intent?.getStringExtra("tt_url") ?: return
-        window.decorView.post { holder.load(url) }
+        if (!BuildConfig.DEBUG || intent == null) return
+        intent.getStringExtra("tt_url")?.let { url -> window.decorView.post { holder.load(url) } }
+        when (intent.getStringExtra("tt_adblock_update")) {
+            "now" -> AdblockUpdateWorker.runNow(this)
+            "force" -> container.appScope.launch { container.filterRepository.updateLists(forceRebuild = true) }
+        }
     }
+
+    private val container get() = (application as TrueTubeApp).container
 
     override fun onStart() {
         super.onStart()
