@@ -3,6 +3,14 @@
 Every release needs a section `## <version>` here (the release workflow fails without one).
 The section becomes the GitHub release text and is shown in the app after the update.
 
+## 0.2.2
+
+Fixes.
+
+- SponsorBlock strip, skip and tools buttons sit on the video again on wide screens (unfolded foldables, tablets) instead of below it
+- Only the real Google sign-in pages stay in the app; look-alike addresses open in the browser
+- Login cookies are no longer included in Android cloud backups or device transfers
+
 ## 0.2.1
 
 Fullscreen gestures and more branding options.
