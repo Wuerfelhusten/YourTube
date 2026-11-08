@@ -179,6 +179,7 @@
 
   let controlsShown = null;
   let menuShown = null;
+  let boxShown = null;
   // A YouTube menu / sheet over the player (gear, quality, speed, comments ...): m.youtube marks it
   // with #bottom-sheet and dims the page with a scrim. The app pauses its swipe gestures meanwhile.
   const menuOpen = () => location.hash.includes("bottom-sheet") ||
@@ -190,6 +191,15 @@
     if (shown !== controlsShown) {
       controlsShown = shown;
       TT.post('player-controls', { visible: shown });
+    }
+    // Where the video sits in the page (CSS px). On wide screens (tablet, unfolded Fold) m.youtube
+    // caps the player height and centres it, so it is not simply width * 9/16.
+    const p = document.querySelector('#player-container-id') || document.querySelector('.html5-video-player');
+    const r = p && p.getBoundingClientRect();
+    const box = r && r.width > 0 && r.height > 0 ? [r.left, r.top, r.width, r.height].map(Math.round).join(',') : '';
+    if (box !== boxShown) {
+      boxShown = box;
+      if (box) TT.post('player-box', { left: Math.round(r.left), top: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) });
     }
     const menu = menuOpen();
     if (menu !== menuShown) {

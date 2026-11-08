@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -102,6 +104,7 @@ fun PlayerLayer(
     val sbSegments by extras.segments.collectAsStateWithLifecycle()
     val prompt by controller.player.sponsorPrompt.collectAsStateWithLifecycle()
     val ytControls by controller.player.controlsVisible.collectAsStateWithLifecycle()
+    val playerBox by controller.player.playerBox.collectAsStateWithLifecycle()
     var toolsOpen by remember { mutableStateOf(false) }
     val ytMenuOpen by controller.player.menuOpen.collectAsStateWithLifecycle()
     val appSettings by extras.settings.settings.collectAsStateWithLifecycle()
@@ -297,7 +300,14 @@ fun PlayerLayer(
                     // Native layer over the video (expanded / fullscreen, not PiP): SponsorBlock strip,
                     // tools button, double-tap hint. Independent of YouTube's player DOM.
                     if (expanded && !pip) {
-                        val videoBox = if (fullscreen) Modifier.fillMaxSize() else Modifier.fillMaxWidth().height(screenWidth * 9 / 16)
+                        // The video area as the page reports it: on wide screens m.youtube caps the
+                        // player height and centres it, so width * 9/16 would put the strip below the video.
+                        val box = playerBox?.takeIf { it.width > 0 && it.height > 0 && it.top in -4..4 && it.width.dp <= screenWidth + 4.dp }
+                        val videoBox = when {
+                            fullscreen -> Modifier.fillMaxSize()
+                            box != null -> Modifier.offset(x = box.left.dp).size(box.width.dp, box.height.dp)
+                            else -> Modifier.fillMaxWidth().height(screenWidth * 9 / 16)
+                        }
                         Box(videoBox) {
                             if (extras.settings.current.sponsorStrip && !ytControls) {
                                 SegmentStrip(sbSegments, video.videoId, video.duration, Modifier.align(Alignment.BottomStart))

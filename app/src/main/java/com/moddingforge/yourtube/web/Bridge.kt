@@ -59,6 +59,10 @@ sealed interface BridgeMessage {
     @Serializable @SerialName("player-controls")
     data class PlayerControls(val visible: Boolean = false) : BridgeMessage
 
+    /** Player: where the video area sits in the page, in CSS px (= dp). */
+    @Serializable @SerialName("player-box")
+    data class PlayerBox(val left: Int = 0, val top: Int = 0, val width: Int = 0, val height: Int = 0) : BridgeMessage
+
     /** Player: a YouTube menu / bottom sheet is open over the page (gestures pause). */
     @Serializable @SerialName("player-menu")
     data class PlayerMenu(val open: Boolean = false) : BridgeMessage

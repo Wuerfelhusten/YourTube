@@ -105,6 +105,10 @@ class WebViewHolder(
     private val _controlsVisible = MutableStateFlow(false)
     val controlsVisible: StateFlow<Boolean> = _controlsVisible.asStateFlow()
 
+    /** Player: the video area in the page (CSS px = dp), null until the page reported it. */
+    private val _playerBox = MutableStateFlow<BridgeMessage.PlayerBox?>(null)
+    val playerBox: StateFlow<BridgeMessage.PlayerBox?> = _playerBox.asStateFlow()
+
     /** Player: one of YouTube's menus / sheets is open. */
     private val _menuOpen = MutableStateFlow(false)
     val menuOpen: StateFlow<Boolean> = _menuOpen.asStateFlow()
@@ -526,6 +530,7 @@ class WebViewHolder(
             }
             is BridgeMessage.SponsorPrompt -> _sponsorPrompt.value = msg.takeIf { it.category.isNotEmpty() }
             is BridgeMessage.PlayerControls -> _controlsVisible.value = msg.visible
+            is BridgeMessage.PlayerBox -> _playerBox.value = msg
             is BridgeMessage.PlayerMenu -> {
                 Log.d(Bridge.TAG, "player menu open=${msg.open}")
                 _menuOpen.value = msg.open
