@@ -32,5 +32,5 @@ Set-Secret "YOURTUBE_KEYSTORE_PASSWORD" $props["storePassword"]
 Set-Secret "YOURTUBE_KEY_ALIAS" $props["keyAlias"]
 Set-Secret "YOURTUBE_KEY_PASSWORD" $props["keyPassword"]
 
-Write-Host "Secrets set for $Repo:"
+Write-Host "Secrets set for ${Repo}:"
 gh secret list --repo $Repo
