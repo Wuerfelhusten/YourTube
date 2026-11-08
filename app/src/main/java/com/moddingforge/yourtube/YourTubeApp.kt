@@ -66,7 +66,11 @@ class AppContainer(app: Application) {
     val playerExtras = PlayerExtras(app, player, settings, json, appScope)
     val deArrow = DeArrowService(listOf(feed, player), settings, json, appScope)
     val updater = com.moddingforge.yourtube.update.Updater(app, json, appScope, settings)
-    val notifier = com.moddingforge.yourtube.notify.Notifier(app, settings)
+    val notifier = com.moddingforge.yourtube.notify.Notifier(app, settings).also { n ->
+        // The active channel (brand accounts) for the app's own youtubei requests.
+        feed.onSession = { if (it.loggedIn) n.setPageId(it.pageId) }
+        player.onSession = { if (it.loggedIn) n.setPageId(it.pageId) }
+    }
 
     init {
         // Settings that act on the pages live.

@@ -90,6 +90,16 @@ if (isTop) {
     schedule();
   });
 
+  // Active YouTube channel of the session: a brand channel has its own id (DELEGATED_SESSION_ID),
+  // a personal channel none. The app's own youtubei requests (notifications) must act as it.
+  if (/(^|\.)youtube\.com$/.test(location.hostname)) {
+    window.addEventListener('load', () => {
+      const cfg = window.ytcfg;
+      if (!cfg || !cfg.get) return;
+      TT.post('session', { loggedIn: !!cfg.get('LOGGED_IN'), pageId: String(cfg.get('DELEGATED_SESSION_ID') || '') });
+    });
+  }
+
   TT.post('ready', { version: TT.version, url: location.href });
   TT.log('core loaded', location.href);
 }

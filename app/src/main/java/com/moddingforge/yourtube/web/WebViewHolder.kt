@@ -94,6 +94,8 @@ class WebViewHolder(
     var onOpenInFeed: (String) -> Unit = {}
     var onFullscreen: (Boolean) -> Unit = {}
     var onOpenSettings: () -> Unit = {}
+    /** Page reported its YouTube session (active channel). */
+    var onSession: (BridgeMessage.Session) -> Unit = {}
 
     /** Player: "Skip <category>" button wanted (SponsorBlock "button" mode), null = hidden. */
     private val _sponsorPrompt = MutableStateFlow<BridgeMessage.SponsorPrompt?>(null)
@@ -464,6 +466,7 @@ class WebViewHolder(
 
     private fun onBridgeMessage(msg: BridgeMessage) {
         when (msg) {
+            is BridgeMessage.Session -> onSession(msg)
             is BridgeMessage.Ready -> {
                 Log.i(Bridge.TAG, "ready v${msg.version} @ ${msg.url}")
                 _state.update { it.copy(bridgeReady = true) }

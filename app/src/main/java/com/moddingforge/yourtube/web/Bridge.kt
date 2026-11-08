@@ -15,6 +15,10 @@ sealed interface BridgeMessage {
     @Serializable @SerialName("ready")
     data class Ready(val version: Int, val url: String) : BridgeMessage
 
+    /** YouTube session of the page: signed in, and the active brand channel (empty = personal channel). */
+    @Serializable @SerialName("session")
+    data class Session(val loggedIn: Boolean = false, val pageId: String = "") : BridgeMessage
+
     @Serializable @SerialName("navigation")
     data class Navigation(val url: String, val title: String = "") : BridgeMessage
 

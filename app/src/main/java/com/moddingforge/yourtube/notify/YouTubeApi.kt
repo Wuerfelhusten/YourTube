@@ -13,7 +13,10 @@ import java.util.Locale
  * (SAPISIDHASH). m.youtube's MWEB client gets no notifications at all, so these requests use the
  * desktop WEB client, which YouTube answers with the bell inbox and the subscriptions feed.
  */
-class YouTubeApi {
+class YouTubeApi(
+    /** Active brand channel of the session (see Notifier.setPageId); null/empty = personal channel. */
+    private val pageId: () -> String? = { null },
+) {
     private fun cookies(): String? = runCatching { CookieManager.getInstance().getCookie(ORIGIN) }.getOrNull()
 
     private fun sapisid(cookies: String?): String? = cookies?.split(';')?.map { it.trim() }?.let { list ->
@@ -31,7 +34,9 @@ class YouTubeApi {
         val hash = MessageDigest.getInstance("SHA-1").digest("$ts $sapisid $ORIGIN".toByteArray())
             .joinToString("") { "%02x".format(it) }
         val locale = Locale.getDefault()
-        val body = """{"context":{"client":{"clientName":"WEB","clientVersion":"$CLIENT_VERSION","hl":"${locale.language}","gl":"${locale.country.ifEmpty { "US" }}","platform":"DESKTOP"}}""" +
+        val page = pageId()?.takeIf { it.isNotBlank() }
+        val user = if (page != null) ""","user":{"onBehalfOfUser":"$page"}""" else ""
+        val body = """{"context":{"client":{"clientName":"WEB","clientVersion":"$CLIENT_VERSION","hl":"${locale.language}","gl":"${locale.country.ifEmpty { "US" }}","platform":"DESKTOP"}$user}""" +
             (if (fields.isNotEmpty()) ",$fields" else "") + "}"
         val conn = (URL("$ORIGIN/youtubei/v1/$endpoint?prettyPrint=false").openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
@@ -44,6 +49,7 @@ class YouTubeApi {
             setRequestProperty("Origin", ORIGIN)
             setRequestProperty("X-Origin", ORIGIN)
             setRequestProperty("X-Goog-AuthUser", "0")
+            if (page != null) setRequestProperty("X-Goog-PageId", page)
             setRequestProperty("X-Youtube-Client-Name", "1")
             setRequestProperty("X-Youtube-Client-Version", CLIENT_VERSION)
             setRequestProperty("User-Agent", USER_AGENT)

@@ -40,8 +40,8 @@ import java.util.Date
  * The first check only remembers what is there, so enabling it never floods the shade.
  */
 class Notifier(private val app: Application, private val settings: SettingsRepository) {
-    val api = YouTubeApi()
     private val prefs = app.getSharedPreferences("notify", 0)
+    val api = YouTubeApi { prefs.getString(KEY_PAGE_ID, null) }
     private val mutex = Mutex()
 
     private val _unseen = MutableStateFlow(prefs.getInt(KEY_UNSEEN, 0))
@@ -95,6 +95,24 @@ class Notifier(private val app: Application, private val settings: SettingsRepos
         // YouTube lowered the count (read elsewhere): forget the acknowledged surplus.
         if (_acknowledged.value > count) _acknowledged.value = count
         prefs.edit().putInt(KEY_UNSEEN, count).putInt(KEY_ACK, _acknowledged.value).apply()
+    }
+
+    /**
+     * The page reported the active channel ("" = personal). Another channel has its own feed and
+     * inbox: start over (first check only remembers), so a switch never floods the shade.
+     */
+    fun setPageId(pageId: String) {
+        val old = prefs.getString(KEY_PAGE_ID, null)
+        if (old == pageId) return
+        Log.i(TAG, "active channel changed")
+        prefs.edit()
+            .putString(KEY_PAGE_ID, pageId)
+            .remove(KEY_SEEN_VIDEOS).remove(KEY_SEEN_INBOX)
+            .putBoolean(KEY_INIT_VIDEOS, false).putBoolean(KEY_INIT_INBOX, false)
+            .putInt(KEY_UNSEEN, 0).putInt(KEY_ACK, 0)
+            .apply()
+        _unseen.value = 0
+        _acknowledged.value = 0
     }
 
     /** The bell was opened: hide the badge until YouTube reports more unread entries. */
@@ -256,5 +274,6 @@ class Notifier(private val app: Application, private val settings: SettingsRepos
         private const val KEY_UNSEEN = "unseen"
         private const val KEY_ACK = "acknowledged"
         private const val KEY_STATUS = "status"
+        private const val KEY_PAGE_ID = "page_id"
     }
 }
