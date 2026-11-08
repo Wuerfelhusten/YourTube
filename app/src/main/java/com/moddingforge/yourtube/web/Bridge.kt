@@ -59,6 +59,10 @@ sealed interface BridgeMessage {
     @Serializable @SerialName("player-controls")
     data class PlayerControls(val visible: Boolean = false) : BridgeMessage
 
+    /** Player: a YouTube menu / bottom sheet is open over the page (gestures pause). */
+    @Serializable @SerialName("player-menu")
+    data class PlayerMenu(val open: Boolean = false) : BridgeMessage
+
     /** Player: a SponsorBlock segment was skipped. */
     @Serializable @SerialName("sponsor-skipped")
     data class SponsorSkipped(val category: String, val seconds: Double = 0.0) : BridgeMessage

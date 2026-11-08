@@ -3,6 +3,15 @@
 Every release needs a section `## <version>` here (the release workflow fails without one).
 The section becomes the GitHub release text and is shown in the app after the update.
 
+## 0.2.1
+
+Fullscreen gestures.
+
+- Brightness and volume only react at the outer left and right edges, no longer in the middle or over the seekbar
+- New setting: Playback > Brightness and volume by swiping (on by default)
+- Gestures pause while a menu is open (YouTube quality / speed menu, comments, YourTube tools)
+- Back closes an open YouTube menu or the comments first instead of leaving fullscreen or minimizing the player
+
 ## 0.2.0
 
 Notifications.

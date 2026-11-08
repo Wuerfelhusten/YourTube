@@ -20,6 +20,8 @@
     <string name="links_hint_open">Einstellungen öffnen</string>
     <string name="cancel">Abbrechen</string>
     <string name="save">Speichern</string>
+    <string name="settings_swipe_adjust">Helligkeit und Lautstärke per Wischen</string>
+    <string name="settings_swipe_adjust_hint">Vollbild: am linken Rand (Helligkeit) oder rechten Rand (Lautstärke) hoch oder runter wischen</string>
     <string name="notifications_title">Benachrichtigungen</string>
     <string name="notifications_error">Die Benachrichtigungen konnten nicht geladen werden. Verbindung prüfen und erneut versuchen.</string>
     <string name="notifications_empty">Noch keine Benachrichtigungen.</string>

@@ -55,6 +55,7 @@ import androidx.compose.material.icons.outlined.ScreenRotation
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.SignalCellularAlt
 import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material.icons.outlined.SwipeVertical
 import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.outlined.TaskAlt
 import androidx.compose.material.icons.outlined.ThumbDown
@@ -246,6 +247,8 @@ fun SettingsScreen(container: AppContainer, onClose: () -> Unit) {
                         stringResource(R.string.settings_rotate_hint), s.rotateToFullscreen) { v -> update { it.copy(rotateToFullscreen = v) } }
                     Item(Icons.Outlined.TouchApp, stringResource(R.string.settings_double_tap),
                         stringResource(R.string.settings_seconds, s.doubleTapSeconds)) { picker = Picker.DOUBLE_TAP }
+                    SwitchItem(Icons.Outlined.SwipeVertical, stringResource(R.string.settings_swipe_adjust),
+                        stringResource(R.string.settings_swipe_adjust_hint), s.swipeAdjust) { v -> update { it.copy(swipeAdjust = v) } }
                     Section(stringResource(R.string.section_audio_captions))
                     SwitchItem(Icons.Outlined.RecordVoiceOver, stringResource(R.string.settings_original_audio),
                         stringResource(R.string.settings_original_audio_hint), s.originalAudio) { v -> update { it.copy(originalAudio = v) } }

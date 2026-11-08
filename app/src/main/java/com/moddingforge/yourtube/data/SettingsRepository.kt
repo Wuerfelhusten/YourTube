@@ -65,6 +65,8 @@ data class AppSettings(
     val originalAudio: Boolean = true,
     val noAutoCaptions: Boolean = false,
     val doubleTapSeconds: Int = 10,
+    /** Fullscreen: swipe at the left / right edge for brightness / volume. */
+    val swipeAdjust: Boolean = true,
     // app
     /** home | subscriptions | library | history */
     val startPage: String = "home",
@@ -140,6 +142,7 @@ class SettingsRepository(context: Context, private val scope: CoroutineScope) {
         val origAudio = booleanPreferencesKey("original_audio")
         val noCaptions = booleanPreferencesKey("no_auto_captions")
         val dtSeconds = intPreferencesKey("double_tap_seconds")
+        val swipeAdjust = booleanPreferencesKey("swipe_adjust")
         val startPage = stringPreferencesKey("start_page")
         val materialYou = booleanPreferencesKey("material_you")
         val amoled = booleanPreferencesKey("amoled")
@@ -185,6 +188,7 @@ class SettingsRepository(context: Context, private val scope: CoroutineScope) {
         originalAudio = this[Keys.origAudio] ?: true,
         noAutoCaptions = this[Keys.noCaptions] ?: false,
         doubleTapSeconds = this[Keys.dtSeconds] ?: 10,
+        swipeAdjust = this[Keys.swipeAdjust] ?: true,
         startPage = this[Keys.startPage] ?: "home",
         materialYou = this[Keys.materialYou] ?: false,
         amoled = this[Keys.amoled] ?: false,
@@ -239,6 +243,7 @@ class SettingsRepository(context: Context, private val scope: CoroutineScope) {
                 p[Keys.origAudio] = s.originalAudio
                 p[Keys.noCaptions] = s.noAutoCaptions
                 p[Keys.dtSeconds] = s.doubleTapSeconds
+                p[Keys.swipeAdjust] = s.swipeAdjust
                 p[Keys.startPage] = s.startPage
                 p[Keys.materialYou] = s.materialYou
                 p[Keys.amoled] = s.amoled

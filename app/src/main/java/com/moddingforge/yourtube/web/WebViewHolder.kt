@@ -105,6 +105,10 @@ class WebViewHolder(
     private val _controlsVisible = MutableStateFlow(false)
     val controlsVisible: StateFlow<Boolean> = _controlsVisible.asStateFlow()
 
+    /** Player: one of YouTube's menus / sheets is open. */
+    private val _menuOpen = MutableStateFlow(false)
+    val menuOpen: StateFlow<Boolean> = _menuOpen.asStateFlow()
+
     fun sponsorLabel(category: String): String {
         val id = SPONSOR_LABELS[category] ?: return category
         return app.getString(id)
@@ -522,6 +526,10 @@ class WebViewHolder(
             }
             is BridgeMessage.SponsorPrompt -> _sponsorPrompt.value = msg.takeIf { it.category.isNotEmpty() }
             is BridgeMessage.PlayerControls -> _controlsVisible.value = msg.visible
+            is BridgeMessage.PlayerMenu -> {
+                Log.d(Bridge.TAG, "player menu open=${msg.open}")
+                _menuOpen.value = msg.open
+            }
             BridgeMessage.OpenSettings -> onOpenSettings()
             is BridgeMessage.OpenVideo -> onOpenVideo(msg.url)
             is BridgeMessage.OpenInFeed -> onOpenInFeed(msg.url)

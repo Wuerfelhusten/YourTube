@@ -17,16 +17,28 @@ import kotlin.math.max
  *  - down -> follow the finger, release -> mini player (official app)
  *  - up   -> fullscreen (official app)
  * Fullscreen:
- *  - left third, up/down   -> brightness
- *  - right third, up/down  -> volume
- *  - middle third, down    -> leave fullscreen (official app)
+ *  - left edge (outer quarter), up/down  -> brightness  (setting; not over YouTube's top bar / seekbar)
+ *  - right edge (outer quarter), up/down -> volume
+ *  - elsewhere, down                     -> leave fullscreen (official app)
+ * While a menu is open (YouTube's bottom sheets, YourTube's tools) no drag is taken over.
  */
 class PlayerDragLayout(context: Context) : FrameLayout(context) {
 
     enum class GestureMode { NONE, PORTRAIT, FULLSCREEN }
     enum class Adjust { BRIGHTNESS, VOLUME }
 
+    private companion object {
+        /** Width of each brightness / volume zone as a fraction of the view width. */
+        const val EDGE = 0.25f
+    }
+
     var mode = GestureMode.PORTRAIT
+
+    /** Brightness / volume swipes in fullscreen (setting). */
+    var adjustEnabled = true
+
+    /** A menu or sheet is open over the player: leave all drags to it. */
+    var menuOpen = false
 
     /** Height of the video area from the top, in px (16:9 of the width by default). */
     var videoHeight: () -> Int = { width * 9 / 16 }
@@ -66,7 +78,7 @@ class PlayerDragLayout(context: Context) : FrameLayout(context) {
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
         if (ev.actionMasked == MotionEvent.ACTION_DOWN) onAnyTouch()
         if (handleDoubleTap(ev)) return true
-        if (mode == GestureMode.NONE) return false
+        if (mode == GestureMode.NONE || menuOpen) return false
         when (ev.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 downX = ev.x
@@ -89,8 +101,8 @@ class PlayerDragLayout(context: Context) : FrameLayout(context) {
                         else -> Track.SWIPE_UP
                     }
                     GestureMode.FULLSCREEN -> when {
-                        downX < width / 3f -> Track.ADJUST_BRIGHTNESS
-                        downX > width * 2f / 3f -> Track.ADJUST_VOLUME
+                        adjustZone() && downX < width * EDGE -> Track.ADJUST_BRIGHTNESS
+                        adjustZone() && downX > width * (1 - EDGE) -> Track.ADJUST_VOLUME
                         dy > 0 -> Track.EXIT_FULLSCREEN
                         else -> Track.NONE
                     }
@@ -171,6 +183,9 @@ class PlayerDragLayout(context: Context) : FrameLayout(context) {
         }
         return true
     }
+
+    /** Brightness / volume only from the outer edges, between YouTube's top bar and its seekbar. */
+    private fun adjustZone() = adjustEnabled && downY > height * 0.15f && downY < height * 0.80f
 
     private fun reset() {
         track = Track.NONE

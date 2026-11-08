@@ -123,6 +123,10 @@
         try { p.seekTo(Math.max(0, v.currentTime + parseFloat(cmd.value)), true); } catch (e) { v.currentTime += parseFloat(cmd.value); }
         break;
       case 'captions-off': disableCaptions(p); break;
+      case 'close-menu': // Back with a YouTube sheet open: close it like m.youtube's own back
+        if (location.hash.includes('bottom-sheet')) history.back();
+        else { const s = document.querySelector('ytw-scrim'); if (s) s.click(); }
+        break;
     }
     TT.log('tool ' + cmd.action + ' ' + cmd.value);
   });
@@ -174,6 +178,11 @@
   }
 
   let controlsShown = null;
+  let menuShown = null;
+  // A YouTube menu / sheet over the player (gear, quality, speed, comments ...): m.youtube marks it
+  // with #bottom-sheet and dims the page with a scrim. The app pauses its swipe gestures meanwhile.
+  const menuOpen = () => location.hash.includes("bottom-sheet") ||
+    [...document.querySelectorAll("ytw-scrim, .ytSpecBottomSheetLayoutHost")].some((e) => e.getBoundingClientRect().height > 0 && getComputedStyle(e).visibility !== "hidden");
   setInterval(() => {
     drawMarks(); // YouTube re-renders the bar (new video, chapters)
     const c = document.querySelector('.player-controls-content');
@@ -181,6 +190,11 @@
     if (shown !== controlsShown) {
       controlsShown = shown;
       TT.post('player-controls', { visible: shown });
+    }
+    const menu = menuOpen();
+    if (menu !== menuShown) {
+      menuShown = menu;
+      TT.post('player-menu', { open: menu });
     }
   }, 250);
 

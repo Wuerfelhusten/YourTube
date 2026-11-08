@@ -103,6 +103,8 @@ fun PlayerLayer(
     val prompt by controller.player.sponsorPrompt.collectAsStateWithLifecycle()
     val ytControls by controller.player.controlsVisible.collectAsStateWithLifecycle()
     var toolsOpen by remember { mutableStateOf(false) }
+    val ytMenuOpen by controller.player.menuOpen.collectAsStateWithLifecycle()
+    val appSettings by extras.settings.settings.collectAsStateWithLifecycle()
     var toolsShownAt by remember { mutableLongStateOf(0L) }
     var seekHint by remember { mutableStateOf("") }
     var seekHintAt by remember { mutableLongStateOf(0L) }
@@ -134,6 +136,8 @@ fun PlayerLayer(
     BackHandler(enabled = expanded && !pip) { controller.minimize() }
     // Registered later = higher priority: in fullscreen, Back leaves fullscreen first.
     BackHandler(enabled = fullscreen) { controller.setFullscreen(false, explicit = true) }
+    // Highest priority: an open YouTube menu / sheet (gear, quality, comments ...) closes first.
+    BackHandler(enabled = expanded && !pip && ytMenuOpen) { player.send(BridgeCommand.PlayerTool("close-menu")) }
 
     ImmersiveMode(activity, fullscreen)
     val adjust = rememberAdjustState(activity)
@@ -265,6 +269,9 @@ fun PlayerLayer(
                                 }
                                 layout.onSwipeUp = { controller.setFullscreen(true, explicit = true) }
                                 layout.onSwipeDownFullscreen = { controller.setFullscreen(false, explicit = true) }
+                                // Brightness / volume: setting; paused while a menu is open (ours or YouTube's).
+                                layout.adjustEnabled = appSettings.swipeAdjust
+                                layout.menuOpen = toolsOpen || ytMenuOpen
                                 layout.onAdjust = { kind, delta -> adjust.change(kind, delta) }
                                 layout.onAdjustEnd = { adjust.end() }
                                 layout.doubleTapSeconds = if (expanded && !pip) extras.settings.current.doubleTapSeconds else 0
