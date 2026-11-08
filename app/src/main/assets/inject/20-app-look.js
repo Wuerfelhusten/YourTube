@@ -139,6 +139,9 @@
     addChannelName(bar);
     for (const button of bar.querySelectorAll('button')) {
       if (button.dataset.ttPill === '1') continue;
+      // The subscribe button keeps YouTube's own look in every state (its aria-label changes to
+      // "Abo für X beenden" / "Unsubscribe from X" once subscribed, so match by container, not label).
+      if (button.closest('.slim-subscribe-button, ytm-subscribe-button-renderer, .slim-owner-subscribe-button')) continue;
       if (/abonnieren|subscribe/i.test(button.getAttribute('aria-label') || '')) continue;
       const { cls, text } = labelFor(button);
       button.classList.add('tt-pill');

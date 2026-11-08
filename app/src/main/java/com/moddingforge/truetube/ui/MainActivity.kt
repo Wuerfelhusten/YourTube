@@ -286,6 +286,7 @@ class MainActivity : ComponentActivity() {
         if (!BuildConfig.DEBUG || intent == null) return
         intent.getStringExtra("tt_url")?.let { url -> window.decorView.post { container.playerController.navigate(url) } }
         intent.getStringExtra("tt_update_repo")?.let { repo -> container.updater.repo = repo; container.updater.check() }
+        intent.getStringExtra("tt_update_install")?.let { name -> container.updater.debugInstall(name) }
         intent.getStringExtra("tt_eval")?.let { js -> window.decorView.post { container.feed.debugEval(js) } }
         intent.getStringExtra("tt_eval_player")?.let { js -> window.decorView.post { container.player.debugEval(js) } }
         when (intent.getStringExtra("tt_adblock_update")) {

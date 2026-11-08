@@ -113,6 +113,16 @@ class Updater(private val app: Application, private val json: Json, private val 
         }
     }
 
+    /** Debug builds only: install an APK already placed in cache/updates (tests the installer path without GitHub). */
+    fun debugInstall(fileName: String) {
+        if (!BuildConfig.DEBUG) return
+        val file = File(File(app.cacheDir, "updates"), fileName)
+        val release = Release("debug", "debug", "", file.toURI().toString(), file.name, file.length())
+        job = scope.launch(Dispatchers.IO) {
+            runCatching { install(release, file) }.onFailure { _state.value = UpdateState.Failed(release, it.message ?: "install failed") }
+        }
+    }
+
     // --- GitHub -------------------------------------------------------------------------------
 
     @Serializable
