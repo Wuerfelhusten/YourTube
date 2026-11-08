@@ -149,6 +149,7 @@ fun AppShell(
                     signedIn = state.signedIn,
                     onOpen = holder::load,
                     onSignIn = holder::signIn,
+                    brand = com.moddingforge.yourtube.ui.branding.rememberBrand(appSettings),
                 )
             } else {
                 Spacer(Modifier.fillMaxWidth().windowInsetsTopHeight(WindowInsets.statusBars))
@@ -253,6 +254,7 @@ private fun TopBar(
     signedIn: Boolean,
     onOpen: (String) -> Unit,
     onSignIn: () -> Unit,
+    brand: com.moddingforge.yourtube.ui.branding.BrandSpec,
 ) {
     var menu by remember { mutableStateOf(false) }
     Row(
@@ -279,13 +281,11 @@ private fun TopBar(
                 Text(query.orEmpty(), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyLarge)
             }
         } else {
-            Row(
-                Modifier.clickable(onClick = onLogo).padding(start = 16.dp, end = 8.dp).height(56.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(painterResource(R.drawable.ic_logo), contentDescription = null, tint = Color.Unspecified, modifier = Modifier.size(28.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("YourTube", fontWeight = FontWeight.Bold, fontSize = 20.sp, letterSpacing = (-0.5).sp)
+            if (brand.visible) {
+                com.moddingforge.yourtube.ui.branding.BrandMark(
+                    brand,
+                    Modifier.weight(1f, fill = false).clickable(onClick = onLogo).padding(start = 16.dp, end = 8.dp).height(56.dp),
+                )
             }
             Spacer(Modifier.weight(1f))
             IconButton(onClick = onSearch) { Icon(Icons.Outlined.Search, stringResource(R.string.search)) }

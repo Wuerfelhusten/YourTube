@@ -1,8 +1,6 @@
 # YourTube
 
-Android app for YouTube without ads: the mobile YouTube site in a native shell modelled on the
-YouTube app, with Brave's adblock engine, SponsorBlock, Return YouTube Dislike, DeArrow, background
-playback, picture-in-picture and a mini player.
+Android app for YouTube without ads: the mobile YouTube site in a native shell modelled on the YouTube app, with Brave's adblock engine, SponsorBlock, Return YouTube Dislike, DeArrow, background playback, picture-in-picture, a mini player and a lot more.
 
 ## Build
 

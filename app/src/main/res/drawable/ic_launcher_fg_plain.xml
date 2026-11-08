@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launcher icon variant "plain" (see Branding.ICONS). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#FF7C4DFF" android:pathData="M40,34 C40,30.9 43.3,29 46,30.5 L76,48.8 C78.7,50.4 78.7,54.2 76,55.8 L46,74 C43.3,75.6 40,73.7 40,70.6 Z" />
+</vector>

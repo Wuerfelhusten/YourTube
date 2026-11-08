@@ -224,17 +224,30 @@ class MainActivity : ComponentActivity() {
     // --- app shortcuts (long press on the icon) -----------------------------------------------
 
     private fun publishShortcuts() {
-        fun shortcut(id: String, label: Int, icon: Int) = ShortcutInfoCompat.Builder(this, id)
-            .setShortLabel(getString(label))
-            .setIcon(IconCompat.createWithResource(this, icon))
-            .setIntent(Intent(this, MainActivity::class.java).setAction(Intent.ACTION_VIEW).putExtra(EXTRA_SHORTCUT, id))
-            .build()
-        runCatching {
-            ShortcutManagerCompat.setDynamicShortcuts(this, listOf(
-                shortcut("search", R.string.search, R.drawable.ic_shortcut_search),
-                shortcut("subscriptions", R.string.tab_subscriptions, R.drawable.ic_shortcut_subscriptions),
-                shortcut("history", R.string.shortcut_history, R.drawable.ic_shortcut_history),
-            ))
+        // The launcher alias must match the chosen icon (e.g. after an app update reset component states).
+        val icon = container.settings.current.appIcon
+        com.moddingforge.yourtube.ui.branding.Branding.applyIcon(this, icon)
+        publishShortcuts(this, icon)
+    }
+
+    companion object {
+        /** Long-press shortcuts on the launcher icon; tied to the active launcher alias. */
+        fun publishShortcuts(context: android.content.Context, iconId: String) {
+            val alias = com.moddingforge.yourtube.ui.branding.Branding.ICONS.firstOrNull { it.id == iconId }?.alias ?: ".LauncherDefault"
+            val activity = android.content.ComponentName(context.packageName, "com.moddingforge.yourtube$alias")
+            fun shortcut(id: String, label: Int, icon: Int) = ShortcutInfoCompat.Builder(context, id)
+                .setShortLabel(context.getString(label))
+                .setIcon(IconCompat.createWithResource(context, icon))
+                .setActivity(activity)
+                .setIntent(Intent(context, MainActivity::class.java).setAction(Intent.ACTION_VIEW).putExtra(EXTRA_SHORTCUT, id))
+                .build()
+            runCatching {
+                ShortcutManagerCompat.setDynamicShortcuts(context, listOf(
+                    shortcut("search", R.string.search, R.drawable.ic_shortcut_search),
+                    shortcut("subscriptions", R.string.tab_subscriptions, R.drawable.ic_shortcut_subscriptions),
+                    shortcut("history", R.string.shortcut_history, R.drawable.ic_shortcut_history),
+                ))
+            }
         }
     }
 

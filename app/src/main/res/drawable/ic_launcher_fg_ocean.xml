@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launcher icon variant "ocean" (see Branding.ICONS). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#FF26C6DA" android:pathData="M40,34 C40,30.9 43.3,29 46,30.5 L76,48.8 C78.7,50.4 78.7,54.2 76,55.8 L46,74 C43.3,75.6 40,73.7 40,70.6 Z" />
+    <path android:fillColor="#FF0B2233" android:pathData="M46,44 L51.3,44 L55,50.3 L58.7,44 L64,44 L57.3,54.8 L57.3,64 L52.7,64 L52.7,54.8 Z" />
+</vector>

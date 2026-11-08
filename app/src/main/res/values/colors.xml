@@ -4,4 +4,8 @@
     <color name="tt_brand_dark">#FF4B2BB5</color>
     <color name="tt_background">#FFFFFFFF</color>
     <color name="tt_icon_bg">#FF1B1530</color>
+    <color name="icon_bg_light">#FFFFFFFF</color>
+    <color name="icon_bg_black">#FF000000</color>
+    <color name="icon_bg_ocean">#FF0B2233</color>
+    <color name="icon_bg_sunset">#FF2A1410</color>
 </resources>

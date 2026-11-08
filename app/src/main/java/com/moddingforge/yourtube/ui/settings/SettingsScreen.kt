@@ -302,6 +302,7 @@ fun SettingsScreen(container: AppContainer, onClose: () -> Unit) {
                     }
                     SwitchItem(Icons.Outlined.DarkMode, stringResource(R.string.settings_amoled),
                         stringResource(R.string.settings_amoled_hint), s.amoled) { v -> update { it.copy(amoled = v) } }
+                    BrandingSettings(s, update)
                 }
 
                 Page.ACCOUNT -> {
@@ -562,7 +563,7 @@ private fun qualityLabel(q: String): String = when (q) {
 private fun speedLabel(v: Float): String = (if (v % 1f == 0f) v.toInt().toString() else v.toString()).replace('.', ',') + "×"
 
 @Composable
-private fun <T> ChoiceDialog(title: String, options: List<T>, selected: T, label: @Composable (T) -> String, onDismiss: () -> Unit, onPick: (T) -> Unit) {
+internal fun <T> ChoiceDialog(title: String, options: List<T>, selected: T, label: @Composable (T) -> String, onDismiss: () -> Unit, onPick: (T) -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
@@ -623,7 +624,7 @@ private fun listLabel(uuid: String, title: String): String {
 }
 
 @Composable
-private fun SwitchItem(
+internal fun SwitchItem(
     icon: ImageVector,
     title: String,
     summary: String?,
@@ -653,7 +654,7 @@ private fun SwitchItem(
 }
 
 @Composable
-private fun Section(title: String) {
+internal fun Section(title: String) {
     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
     Text(
         title,
@@ -665,7 +666,7 @@ private fun Section(title: String) {
 }
 
 @Composable
-private fun Item(icon: ImageVector, title: String, summary: String, onClick: (() -> Unit)? = null) {
+internal fun Item(icon: ImageVector, title: String, summary: String, onClick: (() -> Unit)? = null) {
     Row(
         Modifier
             .fillMaxWidth()
