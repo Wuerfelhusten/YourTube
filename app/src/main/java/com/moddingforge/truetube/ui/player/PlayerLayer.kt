@@ -100,6 +100,8 @@ fun PlayerLayer(
     val mode by controller.mode.collectAsStateWithLifecycle()
     if (mode == PlayerMode.HIDDEN) return
     val sbSegments by extras.segments.collectAsStateWithLifecycle()
+    val prompt by controller.player.sponsorPrompt.collectAsStateWithLifecycle()
+    val ytControls by controller.player.controlsVisible.collectAsStateWithLifecycle()
     var toolsOpen by remember { mutableStateOf(false) }
     var toolsShownAt by remember { mutableLongStateOf(0L) }
     var seekHint by remember { mutableStateOf("") }
@@ -290,9 +292,14 @@ fun PlayerLayer(
                     if (expanded && !pip) {
                         val videoBox = if (fullscreen) Modifier.fillMaxSize() else Modifier.fillMaxWidth().height(screenWidth * 9 / 16)
                         Box(videoBox) {
-                            SegmentStrip(sbSegments, video.videoId, video.duration, Modifier.align(Alignment.BottomStart))
+                            if (extras.settings.current.sponsorStrip && !ytControls) {
+                                SegmentStrip(sbSegments, video.videoId, video.duration, Modifier.align(Alignment.BottomStart))
+                            }
+                            SkipButton(prompt, label = { player.sponsorLabel(it) },
+                                onSkip = { end -> player.send(BridgeCommand.PlayerTool("seek-to", end.toString())) },
+                                modifier = Modifier.align(Alignment.BottomEnd).padding(end = 12.dp, bottom = if (fullscreen) 72.dp else 44.dp))
                             ToolsButton(visibleSince = toolsShownAt, onClick = { toolsOpen = true },
-                                modifier = Modifier.align(Alignment.TopEnd).padding(top = 6.dp, end = 52.dp))
+                                modifier = Modifier.align(Alignment.TopStart).padding(top = 8.dp, start = 10.dp))
                             SeekHint(seekHint, seekHintAt, Modifier.align(Alignment.Center))
                         }
                     }

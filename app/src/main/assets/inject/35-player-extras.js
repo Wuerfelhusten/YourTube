@@ -116,6 +116,9 @@
       case 'quality':
         try { if (cmd.value === 'auto') p.setPlaybackQualityRange('auto', 'auto'); else p.setPlaybackQualityRange(cmd.value, cmd.value); } catch (e) { /* ignore */ }
         break;
+      case 'seek-to':
+        try { p.seekTo(parseFloat(cmd.value), true); } catch (e) { v.currentTime = parseFloat(cmd.value); }
+        break;
       case 'seek-by':
         try { p.seekTo(Math.max(0, v.currentTime + parseFloat(cmd.value)), true); } catch (e) { v.currentTime += parseFloat(cmd.value); }
         break;
@@ -133,26 +136,87 @@
   let segments = { videoId: '', list: [], skipped: new Set() };
 
   TT.on('sponsor-segments', (cmd) => {
-    segments = { videoId: cmd.videoId, list: cmd.segments || [], skipped: new Set() };
+    segments = { videoId: cmd.videoId, list: cmd.segments || [], skipped: new Set(), marks: cmd.marks !== false };
+    marksKey = '';
+    drawMarks();
     TT.log('sponsorblock: ' + segments.list.length + ' segments for ' + cmd.videoId);
   });
+
+  // Segment marks on YouTube's own seekbar while its controls are open (the native strip covers the
+  // collapsed state). Same palette as the native strip (PlayerTools.kt).
+  const SB_COLORS = { sponsor: '#00d400', selfpromo: '#ffff00', interaction: '#cc00ff', intro: '#00ffff', outro: '#0202ed',
+    preview: '#008fd6', music_offtopic: '#ff9900', filler: '#7300ff' };
+  let marksKey = '';
+  function drawMarks() {
+    const bar = document.querySelector('yt-chaptered-progress-bar-line');
+    const v = video();
+    const show = segments.marks && segments.videoId === currentId() && segments.list.length > 0;
+    let layer = bar && bar.querySelector(':scope > .tt-sb-marks');
+    if (!bar || !v || !show || !(v.duration > 0)) { if (layer) layer.remove(); marksKey = ''; return; }
+    const key = segments.videoId + '|' + v.duration + '|' + segments.list.length;
+    if (layer && key === marksKey) return;
+    if (!layer) {
+      layer = document.createElement('div');
+      layer.className = 'tt-sb-marks';
+      layer.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:1';
+      if (getComputedStyle(bar).position === 'static') bar.style.position = 'relative';
+      bar.appendChild(layer);
+    }
+    layer.textContent = '';
+    for (const s of segments.list) {
+      const m = document.createElement('div');
+      const l = Math.max(0, Math.min(1, s.start / v.duration)) * 100;
+      const w = Math.max(0, Math.min(1, s.end / v.duration)) * 100 - l;
+      m.style.cssText = 'position:absolute;top:0;bottom:0;left:' + l + '%;width:max(2px,' + w + '%);background:' + (SB_COLORS[s.category] || '#fff');
+      layer.appendChild(m);
+    }
+    marksKey = key;
+  }
+
+  let controlsShown = null;
+  setInterval(() => {
+    drawMarks(); // YouTube re-renders the bar (new video, chapters)
+    const c = document.querySelector('.player-controls-content');
+    const shown = !!c && !isAd() && getComputedStyle(c).visibility === 'visible' && c.getBoundingClientRect().height > 0;
+    if (shown !== controlsShown) {
+      controlsShown = shown;
+      TT.post('player-controls', { visible: shown });
+    }
+  }, 250);
+
+  let prompted = -1; // index of the "button" segment the native skip button is shown for
+
+  function seekTo(v, t) {
+    const p = player();
+    try { p && p.seekTo ? p.seekTo(t, true) : (v.currentTime = t); } catch (err) { v.currentTime = t; }
+  }
 
   document.addEventListener('timeupdate', (e) => {
     const v = e.target;
     if (!(v instanceof HTMLVideoElement) || isAd()) return;
     if (segments.videoId !== currentId() || segments.list.length === 0) return;
     const t = v.currentTime;
+    let inButton = -1;
     segments.list.forEach((s, i) => {
-      if (segments.skipped.has(i)) return;
-      // Skip once; seeking back into a segment later plays it (manual replay).
-      if (t >= s.start && t < s.end - 0.3) {
+      const inside = t >= s.start && t < s.end - 0.3;
+      if (!inside) return;
+      if (s.action === 'auto') {
+        // once: seeking back into a skipped segment plays it (manual replay).
+        if (s.once && segments.skipped.has(i)) return;
         segments.skipped.add(i);
-        const p = player();
-        try { p && p.seekTo ? p.seekTo(s.end, true) : (v.currentTime = s.end); } catch (err) { v.currentTime = s.end; }
+        seekTo(v, s.end);
         TT.post('sponsor-skipped', { category: s.category, seconds: s.end - s.start });
+      } else if (s.action === 'button') {
+        inButton = i;
       }
     });
+    if (inButton !== prompted) {
+      prompted = inButton;
+      const s = segments.list[inButton];
+      TT.post('sponsor-prompt', s ? { category: s.category, end: s.end } : {});
+    }
   }, true);
+  window.addEventListener('tt:navigate', () => { if (prompted !== -1) { prompted = -1; TT.post('sponsor-prompt', {}); } });
 
   // --- Return YouTube Dislike ------------------------------------------------------------------
   let dislikes = { videoId: '', count: -1 };

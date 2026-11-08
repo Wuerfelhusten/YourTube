@@ -107,6 +107,33 @@ fun ToolsButton(visibleSince: Long, onClick: () -> Unit, modifier: Modifier = Mo
     }
 }
 
+/** SponsorBlock "button" mode: "Skip <category> ›" while playback is inside such a segment. */
+@Composable
+fun SkipButton(
+    prompt: com.moddingforge.truetube.web.BridgeMessage.SponsorPrompt?,
+    label: (String) -> String,
+    onSkip: (Double) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    AnimatedVisibility(prompt != null, enter = fadeIn(), exit = fadeOut(), modifier = modifier) {
+        val p = prompt ?: return@AnimatedVisibility
+        Row(
+            Modifier
+                .background(Color(0xCC000000), RoundedCornerShape(18.dp))
+                .clickable { onSkip(p.end) }
+                .padding(horizontal = 14.dp, vertical = 8.dp),
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        ) {
+            androidx.compose.foundation.layout.Box(Modifier.size(10.dp).background(SEGMENT_COLORS[p.category] ?: Color.White, CircleShape))
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(R.string.sponsor_skip_button, label(p.category)), color = Color.White, style = MaterialTheme.typography.labelLarge)
+        }
+    }
+}
+
+/** Public colour lookup for the settings screen. */
+fun segmentColor(category: String): Color = SEGMENT_COLORS[category] ?: Color.White
+
 /** "+10 s" bubble after a native double tap. */
 @Composable
 fun SeekHint(text: String, at: Long, modifier: Modifier = Modifier) {

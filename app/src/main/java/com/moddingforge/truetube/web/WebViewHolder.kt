@@ -95,7 +95,15 @@ class WebViewHolder(
     var onFullscreen: (Boolean) -> Unit = {}
     var onOpenSettings: () -> Unit = {}
 
-    private fun sponsorLabel(category: String): String {
+    /** Player: "Skip <category>" button wanted (SponsorBlock "button" mode), null = hidden. */
+    private val _sponsorPrompt = MutableStateFlow<BridgeMessage.SponsorPrompt?>(null)
+    val sponsorPrompt: StateFlow<BridgeMessage.SponsorPrompt?> = _sponsorPrompt.asStateFlow()
+
+    /** Player: YouTube's controls are showing (segments are then drawn on its seekbar instead of the native strip). */
+    private val _controlsVisible = MutableStateFlow(false)
+    val controlsVisible: StateFlow<Boolean> = _controlsVisible.asStateFlow()
+
+    fun sponsorLabel(category: String): String {
         val id = SPONSOR_LABELS[category] ?: return category
         return app.getString(id)
     }
@@ -496,8 +504,13 @@ class WebViewHolder(
             is BridgeMessage.VideoIds -> onVideoIds(msg.ids)
             is BridgeMessage.SponsorSkipped -> {
                 Log.i(TAG, "SponsorBlock skipped ${msg.category} (${msg.seconds.toInt()} s)")
-                android.widget.Toast.makeText(app, app.getString(com.moddingforge.truetube.R.string.sponsor_skipped, sponsorLabel(msg.category)), android.widget.Toast.LENGTH_SHORT).show()
+                _sponsorPrompt.value = null
+                if (settings.current.sponsorToast) {
+                    android.widget.Toast.makeText(app, app.getString(com.moddingforge.truetube.R.string.sponsor_skipped, sponsorLabel(msg.category)), android.widget.Toast.LENGTH_SHORT).show()
+                }
             }
+            is BridgeMessage.SponsorPrompt -> _sponsorPrompt.value = msg.takeIf { it.category.isNotEmpty() }
+            is BridgeMessage.PlayerControls -> _controlsVisible.value = msg.visible
             BridgeMessage.OpenSettings -> onOpenSettings()
             is BridgeMessage.OpenVideo -> onOpenVideo(msg.url)
             is BridgeMessage.OpenInFeed -> onOpenInFeed(msg.url)

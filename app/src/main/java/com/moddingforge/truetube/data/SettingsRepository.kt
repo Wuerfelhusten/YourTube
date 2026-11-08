@@ -39,7 +39,16 @@ data class AppSettings(
     val qualityMobile: String = "auto",
     val speed: Float = 1f,
     val sponsorBlock: Boolean = true,
-    val sponsorCategories: Set<String> = setOf("sponsor", "selfpromo", "interaction"),
+    /** SponsorBlock action per category: auto | button | show | off. */
+    val sponsorModes: Map<String, String> = DEFAULT_SPONSOR_MODES,
+    /** Toast after an automatic skip. */
+    val sponsorToast: Boolean = true,
+    /** Coloured segment strip under the video. */
+    val sponsorStrip: Boolean = true,
+    /** Ignore segments shorter than this (seconds). */
+    val sponsorMinLength: Int = 0,
+    /** Skip a segment only once (seeking back into it plays it). */
+    val sponsorSkipOnce: Boolean = true,
     val returnDislikes: Boolean = true,
     // data-layer feed filters (05-data-filter.js) + DeArrow
     val filterShorts: Boolean = false,
@@ -60,6 +69,18 @@ data class AppSettings(
     val startPage: String = "home",
     val materialYou: Boolean = false,
     val amoled: Boolean = false,
+)
+
+/** SponsorBlock defaults: skip what clearly is not content, offer a button for the rest. */
+val DEFAULT_SPONSOR_MODES = linkedMapOf(
+    "sponsor" to "auto",
+    "selfpromo" to "auto",
+    "interaction" to "auto",
+    "intro" to "button",
+    "outro" to "button",
+    "preview" to "show",
+    "music_offtopic" to "button",
+    "filler" to "show",
 )
 
 private val Context.settingsStore by preferencesDataStore(name = "settings")
@@ -86,7 +107,11 @@ class SettingsRepository(context: Context, private val scope: CoroutineScope) {
         val qualityMobile = stringPreferencesKey("quality_mobile")
         val speed = floatPreferencesKey("speed")
         val sponsorBlock = booleanPreferencesKey("sponsorblock")
-        val sponsorCategories = stringSetPreferencesKey("sponsorblock_categories")
+        val sponsorModes = stringSetPreferencesKey("sponsorblock_modes")
+        val sponsorToast = booleanPreferencesKey("sponsorblock_toast")
+        val sponsorStrip = booleanPreferencesKey("sponsorblock_strip")
+        val sponsorMinLength = intPreferencesKey("sponsorblock_min_length")
+        val sponsorSkipOnce = booleanPreferencesKey("sponsorblock_skip_once")
         val ryd = booleanPreferencesKey("return_dislikes")
         val fShorts = booleanPreferencesKey("filter_shorts")
         val fPosts = booleanPreferencesKey("filter_posts")
@@ -117,7 +142,12 @@ class SettingsRepository(context: Context, private val scope: CoroutineScope) {
         qualityMobile = this[Keys.qualityMobile] ?: "auto",
         speed = this[Keys.speed] ?: 1f,
         sponsorBlock = this[Keys.sponsorBlock] ?: true,
-        sponsorCategories = this[Keys.sponsorCategories] ?: setOf("sponsor", "selfpromo", "interaction"),
+        sponsorModes = this[Keys.sponsorModes]?.associate { it.substringBefore(":") to it.substringAfter(":") }
+            ?.let { DEFAULT_SPONSOR_MODES + it } ?: DEFAULT_SPONSOR_MODES,
+        sponsorToast = this[Keys.sponsorToast] ?: true,
+        sponsorStrip = this[Keys.sponsorStrip] ?: true,
+        sponsorMinLength = this[Keys.sponsorMinLength] ?: 0,
+        sponsorSkipOnce = this[Keys.sponsorSkipOnce] ?: true,
         returnDislikes = this[Keys.ryd] ?: true,
         filterShorts = this[Keys.fShorts] ?: false,
         filterPosts = this[Keys.fPosts] ?: false,
@@ -158,7 +188,11 @@ class SettingsRepository(context: Context, private val scope: CoroutineScope) {
                 p[Keys.qualityMobile] = s.qualityMobile
                 p[Keys.speed] = s.speed
                 p[Keys.sponsorBlock] = s.sponsorBlock
-                p[Keys.sponsorCategories] = s.sponsorCategories
+                p[Keys.sponsorModes] = s.sponsorModes.map { (k, v) -> "$k:$v" }.toSet()
+                p[Keys.sponsorToast] = s.sponsorToast
+                p[Keys.sponsorStrip] = s.sponsorStrip
+                p[Keys.sponsorMinLength] = s.sponsorMinLength
+                p[Keys.sponsorSkipOnce] = s.sponsorSkipOnce
                 p[Keys.ryd] = s.returnDislikes
                 p[Keys.fShorts] = s.filterShorts
                 p[Keys.fPosts] = s.filterPosts

@@ -47,6 +47,14 @@ sealed interface BridgeMessage {
         val duration: Double = 0.0,
     ) : BridgeMessage
 
+    /** Player: playback is inside a "button" segment (category, end) - or left it (category empty). */
+    @Serializable @SerialName("sponsor-prompt")
+    data class SponsorPrompt(val category: String = "", val end: Double = 0.0) : BridgeMessage
+
+    /** Player: YouTube's own controls (and seekbar) became visible / hidden. */
+    @Serializable @SerialName("player-controls")
+    data class PlayerControls(val visible: Boolean = false) : BridgeMessage
+
     /** Player: a SponsorBlock segment was skipped. */
     @Serializable @SerialName("sponsor-skipped")
     data class SponsorSkipped(val category: String, val seconds: Double = 0.0) : BridgeMessage
@@ -99,11 +107,19 @@ sealed interface BridgeCommand {
     data class PlayerTool(val action: String, val value: String = "") : BridgeCommand
 
     @Serializable
-    data class Segment(val start: Double, val end: Double, val category: String)
+    data class Segment(
+        val start: Double,
+        val end: Double,
+        val category: String,
+        /** auto | button | show */
+        val action: String = "auto",
+        /** Skip only the first time it is reached. */
+        val once: Boolean = true,
+    )
 
     /** Player: SponsorBlock segments to skip for [videoId]. */
     @Serializable @SerialName("sponsor-segments")
-    data class SponsorSegments(val videoId: String, val segments: List<Segment>) : BridgeCommand
+    data class SponsorSegments(val videoId: String, val segments: List<Segment>, val marks: Boolean = true) : BridgeCommand
 
     /** Player: Return YouTube Dislike count for [videoId]. */
     @Serializable @SerialName("dislikes")

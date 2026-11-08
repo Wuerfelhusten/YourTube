@@ -71,22 +71,25 @@ class PlayerExtras(
     }
 
     private fun sponsorBlock(videoId: String, s: AppSettings) {
-        val key = "$videoId|${s.sponsorBlock}|${s.sponsorCategories.sorted()}"
+        val active = s.sponsorModes.filterValues { it != "off" }
+        val key = "$videoId|${s.sponsorBlock}|${active.toSortedMap()}|${s.sponsorMinLength}|${s.sponsorSkipOnce}|${s.sponsorStrip}"
         if (key == sbKey) return
         sbKey = key
-        if (!s.sponsorBlock || s.sponsorCategories.isEmpty()) {
+        if (!s.sponsorBlock || active.isEmpty()) {
             player.sendSticky(BridgeCommand.SponsorSegments(videoId, emptyList()))
             segments.value = videoId to emptyList()
             return
         }
         scope.launch {
-            val segments = runCatching { fetchSegments(videoId, s.sponsorCategories) }
+            val segments = runCatching { fetchSegments(videoId, active.keys) }
                 .onFailure { Log.w(TAG, "SponsorBlock failed: ${it.message}") }
                 .getOrDefault(emptyList())
+                .filter { it.end - it.start >= s.sponsorMinLength }
+                .map { it.copy(action = active[it.category] ?: "show", once = s.sponsorSkipOnce) }
             Log.i(TAG, "SponsorBlock $videoId: ${segments.size} segments")
             withContext(Dispatchers.Main) {
                 if (player.video.value.videoId == videoId) {
-                    player.sendSticky(BridgeCommand.SponsorSegments(videoId, segments))
+                    player.sendSticky(BridgeCommand.SponsorSegments(videoId, segments, marks = s.sponsorStrip))
                     this@PlayerExtras.segments.value = videoId to segments
                 }
             }
