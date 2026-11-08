@@ -245,6 +245,13 @@ class WebViewHolder(
 
     fun send(command: BridgeCommand) = bridge.send(command)
 
+    /** Comment to show once [videoId] has loaded (lc= links: m.youtube drops the parameter itself). */
+    private var pendingComment: BridgeCommand.OpenComment? = null
+
+    fun openCommentAfterLoad(videoId: String, commentId: String) {
+        pendingComment = BridgeCommand.OpenComment(videoId, commentId)
+    }
+
     /** Commands that must survive page (re)loads: kept per type and re-sent when a page is ready. */
     private val sticky = LinkedHashMap<Class<*>, BridgeCommand>()
 
@@ -501,6 +508,7 @@ class WebViewHolder(
                 _state.update { it.copy(url = msg.url, title = msg.title, canGoBack = webView?.canGoBack() ?: false) }
                 refreshSignIn()
                 enforceRole(msg.url)
+                pendingComment?.takeIf { msg.url.contains("v=${it.videoId}") }?.let { send(it); pendingComment = null }
             }
             is BridgeMessage.Fullscreen -> onFullscreen(msg.on)
             is BridgeMessage.Share -> share(msg.url, msg.title)

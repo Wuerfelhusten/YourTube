@@ -107,6 +107,10 @@ sealed interface BridgeCommand {
     ) : BridgeCommand
 
     /** Player tools sheet: loop on/off, set speed, set quality now (not as default). */
+    /** Player: open the comments and scroll to [commentId] ("parent" or "parent.reply"), from an lc= link. */
+    @Serializable @SerialName("open-comment")
+    data class OpenComment(val videoId: String, val commentId: String) : BridgeCommand
+
     @Serializable @SerialName("player-tool")
     data class PlayerTool(val action: String, val value: String = "") : BridgeCommand
 

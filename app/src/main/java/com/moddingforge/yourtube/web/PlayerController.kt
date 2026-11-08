@@ -90,6 +90,10 @@ class PlayerController(
     }
 
     fun openVideo(url: String) {
+        val uri = android.net.Uri.parse(url)
+        val videoId = uri.getQueryParameter("v")
+        val comment = uri.getQueryParameter("lc")
+        if (videoId != null && comment != null) player.openCommentAfterLoad(videoId, comment)
         player.load(url)
         expand()
     }

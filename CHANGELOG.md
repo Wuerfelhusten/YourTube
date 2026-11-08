@@ -10,6 +10,7 @@ Notifications.
 - Bell in the top bar with the number of unread YouTube notifications; opens the notification inbox (replies, mentions, channels with the bell on) as a native screen
 - Android notifications for new YouTube notifications, checked in the background
 - Optional notifications for every new video from your subscriptions (off by default)
+- Replies and comment notifications open the comments and jump to the comment (replies are expanded)
 - Settings > Notifications: check interval, only on Wi-Fi, check now
 - "What is new" after every update and a changelog under Settings > About
 - Fixed: the related-videos chips on the watch page floated below the player
