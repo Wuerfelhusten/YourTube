@@ -1,0 +1,133 @@
+# Release: push a tag v<MAJOR.MINOR.PATCH> that matches yourtube.versionName in gradle.properties.
+# Runs the tests, builds the signed release APK and publishes it as a GitHub release, where the
+# in-app updater picks it up.
+#
+# Required repository secrets (see tools/release/set-github-secrets.ps1):
+#   YOURTUBE_KEYSTORE_BASE64    release keystore (.jks), base64 encoded
+#   YOURTUBE_KEYSTORE_PASSWORD  keystore password
+#   YOURTUBE_KEY_ALIAS          key alias
+#   YOURTUBE_KEY_PASSWORD       key password
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NDK_VERSION: 28.2.13676358
+  # SHA-256 of the release signing certificate. Installed apps only accept updates signed with
+  # this certificate, so a build signed with anything else must never be published.
+  RELEASE_CERT_SHA256: 704cd31011d26d6c6a27d0fcbccfa48db5df8b0cf9face69a686669173deea34
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check tag matches the app version
+        id: version
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="$(grep -E '^yourtube\.versionName=' gradle.properties | cut -d= -f2 | tr -d '[:space:]')"
+          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Tag '$TAG' is not of the form vMAJOR.MINOR.PATCH"; exit 1
+          fi
+          if [ "$TAG" != "v$VERSION" ]; then
+            echo "::error::Tag '$TAG' does not match yourtube.versionName '$VERSION' in gradle.properties"; exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Releasing YourTube $VERSION"
+
+      - name: Check signing secrets
+        env:
+          KS: ${{ secrets.YOURTUBE_KEYSTORE_BASE64 }}
+          KSP: ${{ secrets.YOURTUBE_KEYSTORE_PASSWORD }}
+          KA: ${{ secrets.YOURTUBE_KEY_ALIAS }}
+          KP: ${{ secrets.YOURTUBE_KEY_PASSWORD }}
+        run: |
+          for v in KS KSP KA KP; do
+            if [ -z "${!v}" ]; then echo "::error::Signing secrets are missing (see tools/release/set-github-secrets.ps1)"; exit 1; fi
+          done
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Install Android NDK
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$NDK_VERSION" > /dev/null
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+
+      - name: Install Rust for Android
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup target add aarch64-linux-android x86_64-linux-android
+          cargo install cargo-ndk --locked
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: adblock-native
+
+      - name: Check injected scripts (syntax)
+        run: for f in app/src/main/assets/inject/*.js; do node --check "$f"; done
+
+      - name: Unit tests
+        run: ./gradlew --no-configuration-cache testDebugUnitTest
+
+      - name: Build adblock snapshot
+        run: node tools/adblock/build-snapshot.mjs
+
+      - name: Build signed release APK
+        env:
+          KEYSTORE_BASE64: ${{ secrets.YOURTUBE_KEYSTORE_BASE64 }}
+          YOURTUBE_KEYSTORE_PASSWORD: ${{ secrets.YOURTUBE_KEYSTORE_PASSWORD }}
+          YOURTUBE_KEY_ALIAS: ${{ secrets.YOURTUBE_KEY_ALIAS }}
+          YOURTUBE_KEY_PASSWORD: ${{ secrets.YOURTUBE_KEY_PASSWORD }}
+        run: |
+          export YOURTUBE_KEYSTORE_FILE="$RUNNER_TEMP/release.jks"
+          echo "$KEYSTORE_BASE64" | base64 -d > "$YOURTUBE_KEYSTORE_FILE"
+          ./gradlew --no-configuration-cache assembleRelease -Pyourtube.requireReleaseKey=true
+          rm -f "$YOURTUBE_KEYSTORE_FILE"
+
+      - name: Verify APK (signature, version)
+        id: apk
+        run: |
+          APK=app/build/outputs/apk/release/app-release.apk
+          BT="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
+          CERT="$("$BT/apksigner" verify --print-certs "$APK" | grep -m1 'certificate SHA-256 digest' | awk '{print $NF}')"
+          if [ "$CERT" != "$RELEASE_CERT_SHA256" ]; then
+            echo "::error::APK is signed with $CERT, expected $RELEASE_CERT_SHA256 - installed apps could not update"; exit 1
+          fi
+          NAME="$("$BT/aapt2" dump badging "$APK" | grep -oP "versionName='\K[^']+")"
+          if [ "$NAME" != "${{ steps.version.outputs.version }}" ]; then
+            echo "::error::APK versionName '$NAME' differs from the tag"; exit 1
+          fi
+          OUT="YourTube-${{ steps.version.outputs.version }}.apk"
+          cp "$APK" "$OUT"
+          sha256sum "$OUT" > "$OUT.sha256"
+          echo "file=$OUT" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: YourTube ${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          files: |
+            ${{ steps.apk.outputs.file }}
+            ${{ steps.apk.outputs.file }}.sha256

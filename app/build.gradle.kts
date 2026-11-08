@@ -7,11 +7,50 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
-// Release signing data comes from keystore.properties (git-ignored).
+// Release signing: keystore.properties (local, git-ignored) or environment variables (CI, from
+// GitHub secrets): YOURTUBE_KEYSTORE_FILE, YOURTUBE_KEYSTORE_PASSWORD, YOURTUBE_KEY_ALIAS, YOURTUBE_KEY_PASSWORD.
 val keystoreProps = Properties().apply {
     val f = rootProject.file("keystore.properties")
     if (f.exists()) f.inputStream().use { load(it) }
 }
+data class ReleaseKey(val file: File, val storePassword: String, val alias: String, val keyPassword: String)
+val releaseKey: ReleaseKey? = run {
+    val env = System.getenv()
+    val envFile = env["YOURTUBE_KEYSTORE_FILE"]
+    when {
+        !envFile.isNullOrBlank() -> ReleaseKey(
+            file(envFile),
+            env["YOURTUBE_KEYSTORE_PASSWORD"].orEmpty(),
+            env["YOURTUBE_KEY_ALIAS"].orEmpty(),
+            env["YOURTUBE_KEY_PASSWORD"].orEmpty(),
+        )
+        keystoreProps.isNotEmpty() -> ReleaseKey(
+            rootProject.file(keystoreProps.getProperty("storeFile")),
+            keystoreProps.getProperty("storePassword"),
+            keystoreProps.getProperty("keyAlias"),
+            keystoreProps.getProperty("keyPassword"),
+        )
+        else -> null
+    }
+}
+// CI passes -Pyourtube.requireReleaseKey=true: a release signed with anything but the real key
+// could never update an installed app, so such a build must fail instead of falling back.
+val requireReleaseKey = providers.gradleProperty("yourtube.requireReleaseKey").map { it.toBoolean() }.getOrElse(false)
+if (requireReleaseKey && (releaseKey == null || !releaseKey.file.exists())) {
+    throw GradleException("Release signing key missing (YOURTUBE_KEYSTORE_FILE / keystore.properties)")
+}
+
+// App version: single source in gradle.properties (yourtube.versionName = MAJOR.MINOR.PATCH).
+// The versionCode is derived from it, so every higher version installs as an update.
+val appVersionName: String = providers.gradleProperty("yourtube.versionName").get()
+val appVersionCode: Int = run {
+    val parts = appVersionName.split('.').map { it.toIntOrNull() }
+    if (parts.size != 3 || parts.any { it == null || it < 0 || it > 999 }) {
+        throw GradleException("yourtube.versionName must be MAJOR.MINOR.PATCH (each 0..999), got '$appVersionName'")
+    }
+    parts[0]!! * 1_000_000 + parts[1]!! * 1_000 + parts[2]!!
+}
+
 
 // --- Native adblock engine (Brave's adblock-rust, see adblock-native/) ------------------------
 
@@ -78,8 +117,8 @@ android {
         applicationId = "com.moddingforge.yourtube"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = appVersionCode
+        versionName = appVersionName
 
         // Only the ABIs we build the Rust library for.
         ndk { abiFilters += rustAbis }
@@ -89,12 +128,12 @@ android {
     }
 
     signingConfigs {
-        if (keystoreProps.isNotEmpty()) {
+        releaseKey?.let { key ->
             create("release") {
-                storeFile = rootProject.file(keystoreProps.getProperty("storeFile"))
-                storePassword = keystoreProps.getProperty("storePassword")
-                keyAlias = keystoreProps.getProperty("keyAlias")
-                keyPassword = keystoreProps.getProperty("keyPassword")
+                storeFile = key.file
+                storePassword = key.storePassword
+                keyAlias = key.alias
+                keyPassword = key.keyPassword
             }
         }
     }
@@ -117,6 +156,10 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
     }
 
     buildFeatures {
@@ -146,4 +189,7 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons)
     debugImplementation(libs.androidx.compose.ui.tooling)
+
+    testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
 }

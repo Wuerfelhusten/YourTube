@@ -94,8 +94,11 @@ object UrlRouter {
         val uri = raw.trim().toUri()
         when (uri.scheme?.lowercase()) {
             "vnd.youtube" -> {
-                val id = (uri.schemeSpecificPart ?: "").trimStart('/').substringBefore('?').ifEmpty { return null }
-                return watchUrl(id, uri.getQueryParameter("t"))
+                // Opaque URI (vnd.youtube:ID?t=10): getQueryParameter() would throw, so parse by hand.
+                val ssp = (uri.schemeSpecificPart ?: "").trimStart('/')
+                val id = ssp.substringBefore('?').ifEmpty { return null }
+                val t = ssp.substringAfter('?', "").split('&').firstOrNull { it.startsWith("t=") }?.removePrefix("t=")
+                return watchUrl(id, t)
             }
             "http", "https" -> Unit
             else -> return null
@@ -112,7 +115,7 @@ object UrlRouter {
         if (segments.size >= 2 && segments[0] in setOf("live", "embed", "v")) {
             return watchUrl(segments[1], uri.getQueryParameter("t") ?: uri.getQueryParameter("start"))
         }
-        val clean = android.net.Uri.Builder().scheme("https").authority("m.youtube.com").path(uri.path ?: "/")
+        val clean = android.net.Uri.Builder().scheme("https").authority("m.youtube.com").encodedPath(uri.encodedPath ?: "/") // keep "@handle" as is
         for (name in uri.queryParameterNames) {
             if (name in trackingParams) continue
             for (value in uri.getQueryParameters(name)) clean.appendQueryParameter(name, value)

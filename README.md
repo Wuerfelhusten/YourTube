@@ -21,6 +21,12 @@ node tools/adblock/build-snapshot.mjs
 ```
 
 `keystore.properties` (not in git): `storeFile`, `storePassword`, `keyAlias`, `keyPassword`.
+Tests: `./gradlew testDebugUnitTest`.
+
+## Release
+
+Set `yourtube.versionName` in `gradle.properties`, commit, then push the matching tag (`git tag v1.2.3 && git push origin v1.2.3`).
+The release workflow runs the tests, builds the signed APK and publishes it; it fails if tag and version differ.
 
 ## License
 
