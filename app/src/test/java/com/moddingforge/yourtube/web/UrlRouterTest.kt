@@ -59,6 +59,18 @@ class UrlRouterTest {
         assertEquals(UrlRouter.Decision.InApp, UrlRouter.route("https://consent.youtube.com/m?continue=x"))
     }
 
+    @Test fun onlyRealGoogleSignInHostsStayInApp() {
+        for (url in listOf(
+            "https://accounts.google.com/v3/signin", "https://accounts.google.de/ServiceLogin",
+            "https://accounts.google.co.uk/x", "https://consent.google.com.br/x", "https://www.google.com/accounts/x",
+        )) assertEquals(url, UrlRouter.Decision.InApp, UrlRouter.route(url))
+        // Look-alikes must leave the app (opened in the browser, without the YouTube session).
+        for (url in listOf(
+            "https://accounts.google.example.com/signin", "https://accounts.google.com.evil.net/signin",
+            "https://consent.google.attacker.io/x", "https://www.google.evil.com/accounts/x", "https://accounts.google.de.example/x",
+        )) assertTrue(url, UrlRouter.route(url) is UrlRouter.Decision.External)
+    }
+
     @Test fun shortLinkIsRewritten() {
         assertEquals(UrlRouter.Decision.Rewrite("https://m.youtube.com/watch?v=abc"), UrlRouter.route("https://youtu.be/abc"))
     }

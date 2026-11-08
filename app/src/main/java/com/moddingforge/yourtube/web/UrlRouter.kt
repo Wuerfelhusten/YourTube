@@ -73,13 +73,25 @@ object UrlRouter {
 
     /** Google sign-in and the EU cookie consent pages must stay inside the WebView (shared cookies). */
     private fun isGoogleAuthOrConsent(host: String, path: String): Boolean {
-        if (host.startsWith("accounts.google.") || host.startsWith("consent.google.")) return true
+        if (isGoogleHost(host, "accounts") || isGoogleHost(host, "consent")) return true
         if (host == "accounts.youtube.com" || host == "consent.youtube.com") return true
         // Account recovery / "verify it's you" interstitials during sign-in.
         if (host == "gds.google.com" || (host == "myaccount.google.com" && path.startsWith("/signinoptions"))) return true
         // Some sign-in steps run on www.google.<tld>/accounts/... or /signin/...
-        if (host.startsWith("www.google.") && (path.startsWith("/accounts") || path.startsWith("/signin"))) return true
+        if (isGoogleHost(host, "www") && (path.startsWith("/accounts") || path.startsWith("/signin"))) return true
         return false
+    }
+
+    /**
+     * Exactly <sub>.google.<tld> with a real Google country domain (google.com, google.de,
+     * google.co.uk, google.com.br ...) - not "accounts.google.example.com" (a look-alike login page
+     * must open in the browser, never inside the app with the YouTube session).
+     */
+    private val googleTld = Regex("""(com|[a-z]{2}|co\.[a-z]{2}|com\.[a-z]{2})""")
+
+    internal fun isGoogleHost(host: String, sub: String): Boolean {
+        val prefix = "$sub.google."
+        return host.startsWith(prefix) && googleTld.matches(host.removePrefix(prefix))
     }
 
     /** Tracking parameters YouTube adds to shared links. */
