@@ -62,11 +62,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private val BRAND_MODES = listOf("default", "custom", "off")
+private val BRAND_MODES = listOf("default", "youtube", "premium", "custom", "off")
 
 @Composable
 private fun brandModeLabel(mode: String) = stringResource(
     when (mode) {
+        "youtube" -> R.string.brand_youtube
+        "premium" -> R.string.brand_premium
         "custom" -> R.string.brand_custom
         "off" -> R.string.brand_off
         else -> R.string.brand_default

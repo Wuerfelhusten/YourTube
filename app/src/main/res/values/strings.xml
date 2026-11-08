@@ -20,6 +20,9 @@
     <string name="links_hint_open">Open settings</string>
     <string name="cancel">Cancel</string>
     <string name="save">Save</string>
+    <string name="icon_youtube">YouTube</string>
+    <string name="brand_youtube">YouTube logo and name</string>
+    <string name="brand_premium">YouTube logo and Premium</string>
     <string name="settings_swipe_adjust">Brightness and volume by swiping</string>
     <string name="settings_swipe_adjust_hint">Fullscreen: swipe up or down at the left edge (brightness) or right edge (volume)</string>
     <string name="notifications_title">Notifications</string>

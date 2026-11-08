@@ -42,6 +42,7 @@ object Branding {
         AppIcon("ocean", ".LauncherOcean", R.string.icon_ocean, Color(0xFF0B2233), R.drawable.ic_launcher_fg_ocean),
         AppIcon("sunset", ".LauncherSunset", R.string.icon_sunset, Color(0xFF2A1410), R.drawable.ic_launcher_fg_sunset),
         AppIcon("plain", ".LauncherPlain", R.string.icon_plain, Color(0xFF1B1530), R.drawable.ic_launcher_fg_plain),
+        AppIcon("youtube", ".LauncherYoutube", R.string.icon_youtube, Color(0xFFFFFFFF), R.drawable.ic_launcher_fg_youtube),
     )
 
     // --- top bar logo image ---------------------------------------------------------------------

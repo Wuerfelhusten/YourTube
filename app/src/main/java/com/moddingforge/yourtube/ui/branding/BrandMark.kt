@@ -28,7 +28,12 @@ import com.moddingforge.yourtube.data.AppSettings
 
 /** What the top bar shows on the left. */
 data class BrandSpec(val mode: String, val text: String, val logo: ImageBitmap?) {
-    val visible get() = mode != "off" && (mode == "default" || text.isNotBlank() || logo != null)
+    val visible get() = mode in BUILT_IN || (mode == "custom" && (text.isNotBlank() || logo != null))
+
+    private companion object {
+        /** Built-in brands: YourTube (default), YouTube, YouTube Premium. */
+        val BUILT_IN = setOf("default", "youtube", "premium")
+    }
 }
 
 /** Brand from the settings; the custom image is loaded again whenever its stamp changes. */
@@ -41,21 +46,35 @@ fun rememberBrand(s: AppSettings): BrandSpec {
     return BrandSpec(s.brandMode, s.brandText, logo)
 }
 
-/** Logo + name: YourTube by default, or the user's own text and image. Nothing when off. */
+/** Logo + name: YourTube, YouTube, YouTube Premium, or the user's own text and image. Nothing when off. */
 @Composable
 fun BrandMark(brand: BrandSpec, modifier: Modifier = Modifier) {
     if (!brand.visible) return
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
-        when {
-            brand.mode == "default" ->
+        val hasIcon = when (brand.mode) {
+            "default" -> {
                 Icon(painterResource(R.drawable.ic_logo), contentDescription = null, tint = Color.Unspecified, modifier = Modifier.size(28.dp))
-            brand.logo != null ->
-                Image(brand.logo, contentDescription = null, contentScale = ContentScale.Fit,
+                true
+            }
+            "youtube", "premium" -> {
+                Icon(painterResource(R.drawable.ic_brand_youtube), contentDescription = null, tint = Color.Unspecified,
+                    modifier = Modifier.size(width = 29.dp, height = 20.dp))
+                true
+            }
+            else -> brand.logo?.let {
+                Image(it, contentDescription = null, contentScale = ContentScale.Fit,
                     modifier = Modifier.size(28.dp).clip(RoundedCornerShape(6.dp)))
+                true
+            } ?: false
         }
-        val text = if (brand.mode == "default") "YourTube" else brand.text.trim()
+        val text = when (brand.mode) {
+            "default" -> "YourTube"
+            "youtube" -> "YouTube"
+            "premium" -> "Premium"
+            else -> brand.text.trim()
+        }
         if (text.isNotEmpty()) {
-            if (brand.mode == "default" || brand.logo != null) Spacer(Modifier.width(6.dp))
+            if (hasIcon) Spacer(Modifier.width(if (brand.mode == "youtube" || brand.mode == "premium") 4.dp else 6.dp))
             Text(text, fontWeight = FontWeight.Bold, fontSize = 20.sp, letterSpacing = (-0.5).sp,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
