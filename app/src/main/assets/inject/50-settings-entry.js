@@ -1,16 +1,16 @@
-// 50-settings-entry.js - adds a "TrueTube Settings" entry at the very top of YouTube's settings
+// 50-settings-entry.js - adds a "YourTube Settings" entry at the very top of YouTube's settings
 // page (m.youtube.com/select_site). It is a clone of YouTube's own first entry, so it looks native
-// in light and dark mode; tapping it opens TrueTube's native settings screen.
+// in light and dark mode; tapping it opens YourTube's native settings screen.
 
 (function () {
   if (window.top !== window || !/(^|\.)youtube\.com$/.test(location.hostname)) return;
-  const TT = window.TrueTube;
+  const TT = window.YourTube;
   if (!TT) return;
 
   const ID = 'tt-settings-entry';
-  const TITLE = 'TrueTube Settings';
+  const TITLE = 'YourTube Settings';
   const SUBTITLE = { de: 'Werbeblocker, Wiedergabe, Oberfläche', en: 'Ad blocker, playback, appearance' };
-  // TrueTube glyph (play shape), 24x24, drawn in the entry's icon color.
+  // YourTube glyph (play shape), 24x24, drawn in the entry's icon color.
   const ICON = 'M5 3.6c0-1.2 1.3-1.9 2.3-1.3l13.4 8.4c1 .6 1 2 0 2.6L7.3 21.7c-1 .6-2.3-.1-2.3-1.3z';
 
   function leafTexts(root) {

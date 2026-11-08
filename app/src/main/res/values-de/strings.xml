@@ -15,15 +15,15 @@
     <string name="play">Abspielen</string>
     <string name="pause">Pausieren</string>
     <string name="later">Später</string>
-    <string name="links_hint_title">YouTube-Links in TrueTube öffnen?</string>
-    <string name="links_hint_text">Android öffnet YouTube-Links erst in TrueTube, wenn du es einmal erlaubst: Tippe auf \"Link hinzufügen\" und wähle alle YouTube-Adressen aus.</string>
+    <string name="links_hint_title">YouTube-Links in YourTube öffnen?</string>
+    <string name="links_hint_text">Android öffnet YouTube-Links erst in YourTube, wenn du es einmal erlaubst: Tippe auf \"Link hinzufügen\" und wähle alle YouTube-Adressen aus.</string>
     <string name="links_hint_open">Einstellungen öffnen</string>
     <string name="cancel">Abbrechen</string>
     <string name="save">Speichern</string>
     <string name="close">Schließen</string>
     <string name="settings_updates">Updates</string>
     <string name="update_button">Aktualisieren</string>
-    <string name="update_available">TrueTube %1$s ist verfügbar</string>
+    <string name="update_available">YourTube %1$s ist verfügbar</string>
     <string name="update_downloading">Update wird geladen … %1$d%%</string>
     <string name="update_downloading_unknown">Update wird geladen …</string>
     <string name="update_installing">Installer geöffnet - Update bestätigen</string>
@@ -31,7 +31,7 @@
     <string name="update_retry">Erneut versuchen</string>
     <string name="update_check">Tippen, um nach Updates zu suchen</string>
     <string name="update_checking">Suche nach Updates …</string>
-    <string name="update_up_to_date">TrueTube ist aktuell</string>
+    <string name="update_up_to_date">YourTube ist aktuell</string>
     <string name="update_off">In diesem Build ist keine Update-Quelle eingetragen</string>
     <string name="state_on">An</string>
     <string name="settings_links_account">Links &amp; Konto</string>
@@ -113,7 +113,7 @@
     <string name="menu_your_data">Meine Daten auf YouTube</string>
     <string name="menu_help">Hilfe &amp; Feedback</string>
     <string name="menu_terms">Nutzungsbedingungen &amp; Datenschutz</string>
-    <string name="settings_support">TrueTube auf Ko-fi unterstützen</string>
+    <string name="settings_support">YourTube auf Ko-fi unterstützen</string>
     <string name="settings_player">Player</string>
     <string name="settings_quality_wifi">Standardqualität (WLAN)</string>
     <string name="settings_quality_mobile">Standardqualität (mobile Daten)</string>
@@ -151,7 +151,7 @@
     <string name="settings_custom_css">Eigenes CSS</string>
     <string name="settings_custom_css_none">Keins</string>
     <string name="settings_custom_css_lines">%1$d Zeilen</string>
-    <string name="settings_custom_css_hint">Wird auf jeder YouTube-Seite in TrueTube angewendet.</string>
+    <string name="settings_custom_css_hint">Wird auf jeder YouTube-Seite in YourTube angewendet.</string>
     <string name="list_yt_shorts">Shorts in Feeds ausblenden</string>
     <string name="list_yt_playables">Playables (Spiele) ausblenden</string>
     <string name="list_yt_recommended">Empfehlungen ausblenden</string>
@@ -160,7 +160,7 @@
     <string name="list_yt_membersonly">Nur-für-Mitglieder-Videos ausblenden</string>
     <string name="list_yt_distracting">Ablenkende Elemente ausblenden</string>
     <string name="list_yt_thumbnails">Vorschaubilder ausblenden</string>
-    <string name="settings_title">TrueTube Settings</string>
+    <string name="settings_title">YourTube Settings</string>
     <string name="settings_adblock">Werbeblocker (Brave)</string>
     <string name="settings_adblock_engine">Filter-Engine</string>
     <string name="settings_adblock_ready">Aktiv - %1$d Listen, Stand %2$s</string>
@@ -177,7 +177,7 @@
     <string name="settings_account">Konto</string>
     <string name="settings_sign_out">Abmelden</string>
     <string name="settings_sign_out_hint">Entfernt Cookies und Website-Daten</string>
-    <string name="settings_sign_out_confirm">In TrueTube von YouTube abmelden? Cookies und Website-Daten werden entfernt.</string>
+    <string name="settings_sign_out_confirm">In YourTube von YouTube abmelden? Cookies und Website-Daten werden entfernt.</string>
     <string name="settings_about">Über</string>
     <string name="settings_about_text">Werbeblocker: Brave adblock-rust %1$s mit EasyList-, uBlock-Origin- und Brave-Listen</string>
 </resources>

@@ -1,4 +1,4 @@
-# Evaluates a JS file in TrueTube's WebView (debug build on emulator-5554) and prints the result.
+# Evaluates a JS file in YourTube's WebView (debug build on emulator-5554) and prints the result.
 # Usage: .\tools\debug\tt-eval.ps1 path\to\snippet.js [-Serial emulator-5554]
 param(
     [Parameter(Mandatory = $true)][string]$File,
@@ -14,7 +14,7 @@ $tmp = New-TemporaryFile
 & $adb -s $Serial push $tmp /data/local/tmp/tt_eval.js | Out-Null
 # PowerShell 5.1 mangles nested quotes for native args, so run the am command from a device-side script.
 $extra = if ($Player) { "tt_eval_player" } else { "tt_eval" }
-[IO.File]::WriteAllText($tmp, ('am start -n com.moddingforge.truetube.debug/com.moddingforge.truetube.ui.MainActivity --es EXTRA "$(cat /data/local/tmp/tt_eval.js)"' -replace "EXTRA", $extra) + "`n")
+[IO.File]::WriteAllText($tmp, ('am start -n com.moddingforge.yourtube.debug/com.moddingforge.yourtube.ui.MainActivity --es EXTRA "$(cat /data/local/tmp/tt_eval.js)"' -replace "EXTRA", $extra) + "`n")
 & $adb -s $Serial push $tmp /data/local/tmp/tt_eval.sh | Out-Null
 Remove-Item $tmp
 & $adb -s $Serial logcat -c

@@ -1,6 +1,6 @@
-//! JNI bridge between TrueTube (Kotlin) and Brave's adblock-rust engine.
+//! JNI bridge between YourTube (Kotlin) and Brave's adblock-rust engine.
 //!
-//! Kotlin side: `com.moddingforge.truetube.adblock.NativeAdblock` (an `object` with
+//! Kotlin side: `com.moddingforge.yourtube.adblock.NativeAdblock` (an `object` with
 //! `@JvmStatic external` functions). An engine is passed around as an opaque `jlong` handle.
 //!
 //! Thread safety: the crate is built without the `single-thread` feature, so `Engine` is
@@ -91,7 +91,7 @@ fn load_resources(engine: &mut Engine, path: &str) -> Result<usize> {
 ///   default components: "trusted uBO resources").
 /// - `resourcesPath` (nullable): resources.json with scriptlets/redirects.
 #[no_mangle]
-pub extern "system" fn Java_com_moddingforge_truetube_adblock_NativeAdblock_nativeCreate<'l>(
+pub extern "system" fn Java_com_moddingforge_yourtube_adblock_NativeAdblock_nativeCreate<'l>(
     mut env: JNIEnv<'l>,
     _class: JClass<'l>,
     list_paths: JObjectArray<'l>,
@@ -127,7 +127,7 @@ pub extern "system" fn Java_com_moddingforge_truetube_adblock_NativeAdblock_nati
 
 /// Builds an engine from inline rules (used for self-tests).
 #[no_mangle]
-pub extern "system" fn Java_com_moddingforge_truetube_adblock_NativeAdblock_nativeCreateFromRules<'l>(
+pub extern "system" fn Java_com_moddingforge_yourtube_adblock_NativeAdblock_nativeCreateFromRules<'l>(
     mut env: JNIEnv<'l>,
     _class: JClass<'l>,
     rules: JString<'l>,
@@ -141,7 +141,7 @@ pub extern "system" fn Java_com_moddingforge_truetube_adblock_NativeAdblock_nati
 }
 
 #[no_mangle]
-pub extern "system" fn Java_com_moddingforge_truetube_adblock_NativeAdblock_nativeDestroy<'l>(
+pub extern "system" fn Java_com_moddingforge_yourtube_adblock_NativeAdblock_nativeDestroy<'l>(
     _env: JNIEnv<'l>,
     _class: JClass<'l>,
     handle: jlong,
@@ -163,7 +163,7 @@ struct CheckResult<'a> {
 /// Checks a network request. Returns `null` if nothing matched (the common case, no JSON
 /// allocation), otherwise `{"block":bool,"important":bool,"redirect":"data:...","rewritten_url":...}`.
 #[no_mangle]
-pub extern "system" fn Java_com_moddingforge_truetube_adblock_NativeAdblock_nativeCheck<'l>(
+pub extern "system" fn Java_com_moddingforge_yourtube_adblock_NativeAdblock_nativeCheck<'l>(
     mut env: JNIEnv<'l>,
     _class: JClass<'l>,
     handle: jlong,
@@ -198,7 +198,7 @@ pub extern "system" fn Java_com_moddingforge_truetube_adblock_NativeAdblock_nati
 /// Cosmetic resources for a page URL, as JSON (`UrlSpecificResources`: hide_selectors,
 /// procedural_actions, exceptions, injected_script, generichide).
 #[no_mangle]
-pub extern "system" fn Java_com_moddingforge_truetube_adblock_NativeAdblock_nativeCosmetic<'l>(
+pub extern "system" fn Java_com_moddingforge_yourtube_adblock_NativeAdblock_nativeCosmetic<'l>(
     mut env: JNIEnv<'l>,
     _class: JClass<'l>,
     handle: jlong,
@@ -216,7 +216,7 @@ pub extern "system" fn Java_com_moddingforge_truetube_adblock_NativeAdblock_nati
 /// Generic hide selectors for newly seen classes/ids. `exceptionsJson` is the `exceptions`
 /// array from `nativeCosmetic`. Returns a JSON array of selectors.
 #[no_mangle]
-pub extern "system" fn Java_com_moddingforge_truetube_adblock_NativeAdblock_nativeHiddenClassIds<'l>(
+pub extern "system" fn Java_com_moddingforge_yourtube_adblock_NativeAdblock_nativeHiddenClassIds<'l>(
     mut env: JNIEnv<'l>,
     _class: JClass<'l>,
     handle: jlong,
@@ -237,7 +237,7 @@ pub extern "system" fn Java_com_moddingforge_truetube_adblock_NativeAdblock_nati
 
 /// Serializes the engine (cache for fast cold starts; format tied to the adblock version).
 #[no_mangle]
-pub extern "system" fn Java_com_moddingforge_truetube_adblock_NativeAdblock_nativeSerialize<'l>(
+pub extern "system" fn Java_com_moddingforge_yourtube_adblock_NativeAdblock_nativeSerialize<'l>(
     mut env: JNIEnv<'l>,
     _class: JClass<'l>,
     handle: jlong,
@@ -251,7 +251,7 @@ pub extern "system" fn Java_com_moddingforge_truetube_adblock_NativeAdblock_nati
 /// Restores an engine from `nativeSerialize` output. Resources are loaded again from
 /// `resourcesPath` (nullable) to be safe.
 #[no_mangle]
-pub extern "system" fn Java_com_moddingforge_truetube_adblock_NativeAdblock_nativeDeserialize<'l>(
+pub extern "system" fn Java_com_moddingforge_yourtube_adblock_NativeAdblock_nativeDeserialize<'l>(
     mut env: JNIEnv<'l>,
     _class: JClass<'l>,
     data: JByteArray<'l>,
@@ -272,7 +272,7 @@ pub extern "system" fn Java_com_moddingforge_truetube_adblock_NativeAdblock_nati
 }
 
 #[no_mangle]
-pub extern "system" fn Java_com_moddingforge_truetube_adblock_NativeAdblock_nativeVersion<'l>(
+pub extern "system" fn Java_com_moddingforge_yourtube_adblock_NativeAdblock_nativeVersion<'l>(
     mut env: JNIEnv<'l>,
     _class: JClass<'l>,
 ) -> jstring {

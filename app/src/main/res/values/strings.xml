@@ -15,15 +15,15 @@
     <string name="play">Play</string>
     <string name="pause">Pause</string>
     <string name="later">Later</string>
-    <string name="links_hint_title">Open YouTube links in TrueTube?</string>
-    <string name="links_hint_text">Android only opens YouTube links in TrueTube after you allow it once: tap \"Add link\" and select all YouTube addresses.</string>
+    <string name="links_hint_title">Open YouTube links in YourTube?</string>
+    <string name="links_hint_text">Android only opens YouTube links in YourTube after you allow it once: tap \"Add link\" and select all YouTube addresses.</string>
     <string name="links_hint_open">Open settings</string>
     <string name="cancel">Cancel</string>
     <string name="save">Save</string>
     <string name="close">Close</string>
     <string name="settings_updates">Updates</string>
     <string name="update_button">Update</string>
-    <string name="update_available">TrueTube %1$s is available</string>
+    <string name="update_available">YourTube %1$s is available</string>
     <string name="update_downloading">Downloading update … %1$d%%</string>
     <string name="update_downloading_unknown">Downloading update …</string>
     <string name="update_installing">Installer opened - confirm the update</string>
@@ -31,7 +31,7 @@
     <string name="update_retry">Retry</string>
     <string name="update_check">Tap to check for updates</string>
     <string name="update_checking">Checking for updates …</string>
-    <string name="update_up_to_date">TrueTube is up to date</string>
+    <string name="update_up_to_date">YourTube is up to date</string>
     <string name="update_off">No update source configured in this build</string>
     <string name="state_on">On</string>
     <string name="settings_links_account">Links &amp; account</string>
@@ -113,7 +113,7 @@
     <string name="menu_your_data">Your data in YouTube</string>
     <string name="menu_help">Help &amp; feedback</string>
     <string name="menu_terms">Terms &amp; privacy</string>
-    <string name="settings_support">Support TrueTube on Ko-fi</string>
+    <string name="settings_support">Support YourTube on Ko-fi</string>
     <string name="settings_player">Player</string>
     <string name="settings_quality_wifi">Default quality (Wi-Fi)</string>
     <string name="settings_quality_mobile">Default quality (mobile data)</string>
@@ -151,7 +151,7 @@
     <string name="settings_custom_css">Custom CSS</string>
     <string name="settings_custom_css_none">None</string>
     <string name="settings_custom_css_lines">%1$d lines</string>
-    <string name="settings_custom_css_hint">Applied to every YouTube page in TrueTube.</string>
+    <string name="settings_custom_css_hint">Applied to every YouTube page in YourTube.</string>
     <string name="list_yt_shorts">Hide Shorts in feeds</string>
     <string name="list_yt_playables">Hide Playables (games)</string>
     <string name="list_yt_recommended">Hide recommendations</string>
@@ -160,7 +160,7 @@
     <string name="list_yt_membersonly">Hide members-only videos</string>
     <string name="list_yt_distracting">Hide distracting elements</string>
     <string name="list_yt_thumbnails">Hide thumbnails</string>
-    <string name="settings_title">TrueTube Settings</string>
+    <string name="settings_title">YourTube Settings</string>
     <string name="settings_adblock">Ad blocker (Brave)</string>
     <string name="settings_adblock_engine">Filter engine</string>
     <string name="settings_adblock_ready">Active - %1$d lists, updated %2$s</string>
@@ -177,7 +177,7 @@
     <string name="settings_account">Account</string>
     <string name="settings_sign_out">Sign out</string>
     <string name="settings_sign_out_hint">Removes cookies and site data</string>
-    <string name="settings_sign_out_confirm">Sign out of YouTube in TrueTube? Cookies and site data will be removed.</string>
+    <string name="settings_sign_out_confirm">Sign out of YouTube in YourTube? Cookies and site data will be removed.</string>
     <string name="settings_about">About</string>
     <string name="settings_about_text">Ad blocking by Brave adblock-rust %1$s with EasyList, uBlock Origin and Brave lists</string>
 </resources>

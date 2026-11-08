@@ -1,4 +1,4 @@
-// 05-data-filter.js - TrueTube's data layer: cleans YouTube's own data BEFORE m.youtube renders it.
+// 05-data-filter.js - YourTube's data layer: cleans YouTube's own data BEFORE m.youtube renders it.
 //
 // Instead of hiding finished UI (what APK patchers have to do), feed items are removed from
 // ytInitialData and from /youtubei/v1/* responses, so there are no gaps, no flicker and no
@@ -9,7 +9,7 @@
 
 (function () {
   if (!/(^|\.)youtube\.com$/.test(location.hostname)) return;
-  const TT = window.TrueTube;
+  const TT = window.YourTube;
 
   const rules = () => window.__TT_RULES__ || {};
   const stats = { removed: 0, titles: 0 };
@@ -128,7 +128,7 @@
   function process(o) {
     if (!active() || !looksLikeYtData(o)) return o;
     const before = stats.removed;
-    try { clean(o, 0); } catch (e) { console.warn('[TrueTube] data filter failed', e); }
+    try { clean(o, 0); } catch (e) { console.warn('[YourTube] data filter failed', e); }
     if (stats.removed !== before) TT && TT.log('data filter removed ' + (stats.removed - before) + ' items');
     return o;
   }

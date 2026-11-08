@@ -1,10 +1,10 @@
 [package]
-name = "truetube_adblock"
+name = "yourtube_adblock"
 version = "0.1.0"
 edition = "2021"
 publish = false
 license = "MPL-2.0"
-description = "JNI bridge between TrueTube and Brave's adblock-rust engine"
+description = "JNI bridge between YourTube and Brave's adblock-rust engine"
 
 [lib]
 crate-type = ["cdylib"]

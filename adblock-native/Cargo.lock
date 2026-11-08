@@ -533,16 +533,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "truetube_adblock"
-version = "0.1.0"
-dependencies = [
- "adblock",
- "jni",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "unicode-ident"
 version = "1.0.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -690,6 +680,16 @@ dependencies = [
  "quote",
  "syn 3.0.9",
  "synstructure",
+]
+
+[[package]]
+name = "yourtube_adblock"
+version = "0.1.0"
+dependencies = [
+ "adblock",
+ "jni",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

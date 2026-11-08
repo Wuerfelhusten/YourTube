@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Adaptive icon foreground: rounded play shape with a "T" cut-out. 108dp canvas, safe zone 66dp. -->
+<!-- Adaptive icon foreground: rounded play shape with a "Y" cut-out. 108dp canvas, safe zone 66dp. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
@@ -10,5 +10,5 @@
         android:pathData="M40,34 C40,30.9 43.3,29 46,30.5 L76,48.8 C78.7,50.4 78.7,54.2 76,55.8 L46,74 C43.3,75.6 40,73.7 40,70.6 Z" />
     <path
         android:fillColor="@color/tt_icon_bg"
-        android:pathData="M46,44 L64,44 L64,48.5 L57.3,48.5 L57.3,64 L52.7,64 L52.7,48.5 L46,48.5 Z" />
+        android:pathData="M46,44 L51.3,44 L55,50.3 L58.7,44 L64,44 L57.3,54.8 L57.3,64 L52.7,64 L52.7,54.8 Z" />
 </vector>

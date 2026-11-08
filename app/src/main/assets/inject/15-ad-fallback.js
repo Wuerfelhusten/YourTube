@@ -4,7 +4,7 @@
 
 (function () {
   if (window.top !== window) return;
-  const TT = window.TrueTube;
+  const TT = window.YourTube;
 
   const SKIP_BUTTONS = [
     '.ytp-ad-skip-button',

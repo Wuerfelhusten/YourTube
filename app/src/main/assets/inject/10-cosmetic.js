@@ -6,7 +6,7 @@
 // (AdblockIntegration.kt), which may run before or after this file.
 
 (function () {
-  const TT = window.TrueTube;
+  const TT = window.YourTube;
   const isTop = window.top === window;
 
   const applied = new Set();

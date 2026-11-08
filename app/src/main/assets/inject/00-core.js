@@ -1,8 +1,8 @@
-// 00-core.js - TrueTube runtime core.
+// 00-core.js - YourTube runtime core.
 // Runs at document start in every youtube.com frame, before any YouTube script.
-// Provides window.TrueTube (bridge client) and reports SPA navigations to the app.
+// Provides window.YourTube (bridge client) and reports SPA navigations to the app.
 
-const native = typeof TrueTubeNative !== 'undefined' ? TrueTubeNative : null;
+const native = typeof YourTubeNative !== 'undefined' ? YourTubeNative : null;
 const isTop = window.top === window;
 const handlers = Object.create(null);
 
@@ -16,7 +16,7 @@ const TT = {
     try {
       native.postMessage(JSON.stringify(Object.assign({ type }, data || {})));
     } catch (e) {
-      console.warn('[TrueTube] post failed', type, e);
+      console.warn('[YourTube] post failed', type, e);
     }
   },
 
@@ -26,11 +26,11 @@ const TT = {
   },
 
   log(...args) {
-    if (TT.debug) console.log('[TrueTube]', ...args);
+    if (TT.debug) console.log('[YourTube]', ...args);
   },
 };
 
-Object.defineProperty(window, 'TrueTube', { value: TT, writable: false, configurable: false, enumerable: false });
+Object.defineProperty(window, 'YourTube', { value: TT, writable: false, configurable: false, enumerable: false });
 
 if (native) {
   native.onmessage = (event) => {
@@ -44,7 +44,7 @@ if (native) {
       try {
         fn(cmd);
       } catch (e) {
-        console.error('[TrueTube] handler failed', cmd.type, e);
+        console.error('[YourTube] handler failed', cmd.type, e);
       }
     }
   };

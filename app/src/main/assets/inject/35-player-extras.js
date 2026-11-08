@@ -1,4 +1,4 @@
-// 35-player-extras.js - player extras driven by TrueTube Settings (PlayerExtras.kt):
+// 35-player-extras.js - player extras driven by YourTube Settings (PlayerExtras.kt):
 //  * default quality / speed for every new video (YouTube's own menu still works afterwards)
 //  * SponsorBlock: skips the received segments once, reports each skip to the app (toast)
 //  * Return YouTube Dislike: shows the dislike count on the dislike pill
@@ -7,7 +7,7 @@
 (function () {
   if (window.top !== window || !/(^|\.)youtube\.com$/.test(location.hostname)) return;
   if (TT_CONFIG.role !== 'player') return;
-  const TT = window.TrueTube;
+  const TT = window.YourTube;
   if (!TT) return;
 
   const player = () => document.getElementById('movie_player');

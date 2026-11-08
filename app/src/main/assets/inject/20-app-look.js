@@ -1,11 +1,11 @@
 // 20-app-look.js - turns m.youtube.com into the content area of a native-looking app.
-//  * m.youtube's own top bar and bottom tab bar are hidden: TrueTube draws native ones.
+//  * m.youtube's own top bar and bottom tab bar are hidden: YourTube draws native ones.
 //  * <html tt-page="..."> tells CSS which kind of page is shown.
 //  * The watch-page action bar gets labelled pills like the official app (like count, share, save).
 
 (function () {
   if (window.top !== window || !/(^|\.)youtube\.com$/.test(location.hostname)) return;
-  const TT = window.TrueTube;
+  const TT = window.YourTube;
   const root = document.documentElement;
 
   function pageKind(path) {
@@ -176,7 +176,7 @@
     });
     TT.on('scroll-top', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 
-    // User CSS from TrueTube Settings (hide comments, custom CSS). textContent is fine under
+    // User CSS from YourTube Settings (hide comments, custom CSS). textContent is fine under
     // YouTube's Trusted Types policy (only HTML/script sinks are restricted).
     let userStyle = null;
     TT.on('user-css', (cmd) => {

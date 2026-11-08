@@ -1,12 +1,12 @@
 // 30-player.js - player behaviour like the official app.
 //  * Videos start WITH sound: m.youtube autoplays muted (web autoplay policy) and shows a
-//    "tap to unmute" button. The app has neither, and in TrueTube the user opened the video
+//    "tap to unmute" button. The app has neither, and in YourTube the user opened the video
 //    on purpose (the WebView allows unmuted playback: mediaPlaybackRequiresUserGesture=false).
 // More player features (quality, speed, fullscreen) follow in M5/M10.
 
 (function () {
   if (window.top !== window || !/(^|\.)youtube\.com$/.test(location.hostname)) return;
-  const TT = window.TrueTube;
+  const TT = window.YourTube;
 
   const style = document.createElement('style');
   style.id = 'tt-player';
@@ -74,7 +74,7 @@
 
   // --- fullscreen ----------------------------------------------------------------------------
   // The WebView offers no HTML fullscreen (and it would need a user gesture, so rotate-to-
-  // fullscreen could never work). TrueTube provides the Fullscreen API itself: YouTube shows its
+  // fullscreen could never work). YourTube provides the Fullscreen API itself: YouTube shows its
   // fullscreen button and switches to its own fullscreen layout; the native side rotates to
   // landscape and hides the system bars.
   const root = document.documentElement;

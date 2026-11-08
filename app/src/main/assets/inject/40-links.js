@@ -1,4 +1,4 @@
-// 40-links.js - splits navigation between TrueTube's two WebViews (see PlayerController.kt):
+// 40-links.js - splits navigation between YourTube's two WebViews (see PlayerController.kt):
 //  * feed:   tapping a video (/watch) opens it in the player WebView instead of navigating here
 //  * player: tapping anything else on YouTube (channel, hashtag, playlist page ...) opens it in
 //            the feed and minimizes the player - like the official app.
@@ -7,7 +7,7 @@
 
 (function () {
   if (window.top !== window || !/(^|\.)youtube\.com$/.test(location.hostname)) return;
-  const TT = window.TrueTube;
+  const TT = window.YourTube;
   if (!TT) return;
   const role = TT_CONFIG.role;
 

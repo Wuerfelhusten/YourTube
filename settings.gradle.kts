@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "TrueTube"
+rootProject.name = "YourTube"
 include(":app")

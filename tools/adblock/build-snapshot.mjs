@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Builds TrueTube's offline adblock snapshot (app/src/main/assets/adblock) the same way
+// Builds YourTube's offline adblock snapshot (app/src/main/assets/adblock) the same way
 // Brave's brave-core-crx-packager builds its components:
 //
 //  1. Filter lists: every component Brave enables by default (minus iOS-only ones) plus the
@@ -27,12 +27,12 @@ const UBO_REPO = 'https://github.com/brave/uBlock.git';
 const log = (...a) => console.log('[adblock-snapshot]', ...a);
 
 async function fetchText(url) {
-  const res = await fetch(url, { headers: { 'User-Agent': 'TrueTube-snapshot-builder' } });
+  const res = await fetch(url, { headers: { 'User-Agent': 'YourTube-snapshot-builder' } });
   if (!res.ok) throw new Error(`${res.status} ${res.statusText} for ${url}`);
   return res.text();
 }
 
-/** Which catalog components TrueTube ships. */
+/** Which catalog components YourTube ships. */
 function selectComponents(catalog) {
   const forAndroid = (c) => !c.platforms || c.platforms.length === 0 || c.platforms.includes('ANDROID');
   return catalog

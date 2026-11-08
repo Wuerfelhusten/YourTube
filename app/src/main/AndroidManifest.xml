@@ -11,13 +11,13 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <application
-        android:name=".TrueTubeApp"
+        android:name=".YourTubeApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/Theme.TrueTube">
+        android:theme="@style/Theme.YourTube">
 
         <activity
             android:name=".ui.MainActivity"
@@ -53,7 +53,7 @@
                 <data android:scheme="vnd.youtube" />
             </intent-filter>
 
-            <!-- "Share -> TrueTube" from any app -->
+            <!-- "Share -> YourTube" from any app -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />

@@ -70,12 +70,12 @@ androidComponents {
 }
 
 android {
-    namespace = "com.moddingforge.truetube"
+    namespace = "com.moddingforge.yourtube"
     compileSdk = 37
     ndkVersion = ndkVersionPinned
 
     defaultConfig {
-        applicationId = "com.moddingforge.truetube"
+        applicationId = "com.moddingforge.yourtube"
         minSdk = 26
         targetSdk = 36
         versionCode = 1
@@ -84,8 +84,8 @@ android {
         // Only the ABIs we build the Rust library for.
         ndk { abiFilters += rustAbis }
 
-        // In-app updater source (gradle.properties: truetube.updateRepo=owner/name).
-        buildConfigField("String", "UPDATE_REPO", "\"${providers.gradleProperty("truetube.updateRepo").getOrElse("")}\"")
+        // In-app updater source (gradle.properties: yourtube.updateRepo=owner/name).
+        buildConfigField("String", "UPDATE_REPO", "\"${providers.gradleProperty("yourtube.updateRepo").getOrElse("")}\"")
     }
 
     signingConfigs {
@@ -103,13 +103,13 @@ android {
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
-            resValue("string", "app_name", "TrueTube Debug")
+            resValue("string", "app_name", "YourTube Debug")
         }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            resValue("string", "app_name", "TrueTube")
+            resValue("string", "app_name", "YourTube")
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
     }
