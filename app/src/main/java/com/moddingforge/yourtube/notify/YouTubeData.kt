@@ -27,6 +27,8 @@ data class InboxItem(
     /** Video the entry is about (for de-duplicating with feed notifications). */
     val videoId: String?,
     val read: Boolean,
+    /** Section heading of the inbox ("Wichtig", "Weitere Benachrichtigungen"), if any. */
+    val section: String? = null,
 )
 
 /** The bell inbox: entries, or YouTube's own hint when there are none. */
@@ -73,17 +75,27 @@ object YouTubeData {
     fun parseInbox(body: String): Inbox {
         val items = mutableListOf<InboxItem>()
         var empty: String? = null
+        var section: String? = null
         walk(json.parseToJsonElement(body)) { key, value ->
             val o = value as? JsonObject ?: return@walk
             when (key) {
+                // "Wichtig" / "Weitere Benachrichtigungen" (desktop inbox since 2025)
+                "multiPageMenuNotificationSectionRenderer" -> section = text(o["notificationSectionTitle"]) ?: text(o["sectionTitle"])
                 "notificationRenderer" -> {
                     val id = o.str("notificationId") ?: return@walk
                     val nav = o.obj("navigationEndpoint")
-                    val videoId = nav?.obj("watchEndpoint")?.str("videoId")
+                    val watch = nav?.obj("watchEndpoint")?.str("videoId")
+                    val reel = nav?.obj("reelWatchEndpoint")?.str("videoId")
+                    // Comment replies / likes: open the video at the comment.
+                    val comments = nav?.obj("getCommentsFromInboxCommand")
+                    val commentVideo = comments?.str("videoId")
                     val path = nav?.obj("commandMetadata")?.obj("webCommandMetadata")?.str("url")
                     val url = when {
-                        videoId != null -> "https://m.youtube.com/watch?v=$videoId"
-                        path != null && path.startsWith("/") -> "https://m.youtube.com$path"
+                        watch != null -> "https://m.youtube.com/watch?v=$watch"
+                        reel != null -> "https://m.youtube.com/shorts/$reel"
+                        commentVideo != null -> "https://m.youtube.com/watch?v=$commentVideo" +
+                            (comments.str("linkedCommentId")?.let { "&lc=$it" } ?: "")
+                        path != null && path.startsWith("/") && !path.startsWith("/youtubei/") -> "https://m.youtube.com$path"
                         else -> null
                     }
                     items += InboxItem(
@@ -93,8 +105,9 @@ object YouTubeData {
                         avatar = lastThumb(o["thumbnail"]),
                         thumbnail = lastThumb(o["videoThumbnail"]),
                         url = url,
-                        videoId = videoId,
+                        videoId = watch ?: reel ?: commentVideo,
                         read = (o["read"] as? JsonPrimitive)?.booleanOrNull ?: false,
+                        section = section,
                     )
                 }
                 "backgroundPromoRenderer" -> empty = listOfNotNull(text(o["title"]), text(o["bodyText"])).joinToString("\n").ifEmpty { null }

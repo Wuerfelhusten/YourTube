@@ -67,7 +67,14 @@ class YouTubeApi(
 
     fun subscriptionFeed(): List<FeedVideo> = YouTubeData.parseSubscriptionFeed(post("browse", "\"browseId\":\"FEsubscriptions\""))
 
-    fun inbox(): Inbox = YouTubeData.parseInbox(
+    /** The bell inbox: the desktop site's current request first (sections, replies, likes), the old menu as fallback. */
+    fun inbox(): Inbox {
+        val current = runCatching { YouTubeData.parseInbox(post("browse", "\"browseId\":\"FEnotifications_inbox\"")) }.getOrNull()
+        if (current != null && current.items.isNotEmpty()) return current
+        return legacyInbox()
+    }
+
+    private fun legacyInbox(): Inbox = YouTubeData.parseInbox(
         post("notification/get_notification_menu", "\"notificationsMenuRequestType\":\"NOTIFICATIONS_MENU_REQUEST_TYPE_INBOX\""),
     )
 

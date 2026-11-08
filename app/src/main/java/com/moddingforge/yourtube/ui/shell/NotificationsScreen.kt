@@ -20,7 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -29,6 +29,7 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.CircularProgressIndicator
@@ -113,8 +114,15 @@ fun NotificationsScreen(notifier: Notifier, onOpen: (String) -> Unit, onSettings
             current == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
             current.items.isEmpty() -> Message(current.emptyText ?: stringResource(R.string.notifications_empty))
             else -> LazyColumn(Modifier.fillMaxSize()) {
-                items(current.items, key = { it.id }) { item ->
-                    InboxRow(item) { item.url?.let(onOpen) }
+                current.items.forEachIndexed { i, item ->
+                    val header = item.section?.takeIf { it != current.items.getOrNull(i - 1)?.section }
+                    if (header != null) item(key = "section-$i") {
+                        Text(header, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = if (i == 0) 8.dp else 20.dp, bottom = 4.dp))
+                    }
+                    item(key = item.id) {
+                        InboxRow(item) { item.url?.let(onOpen) }
+                    }
                 }
             }
         }
@@ -140,7 +148,11 @@ private fun InboxRow(item: InboxItem, onClick: () -> Unit) {
         Box(Modifier.padding(top = 18.dp).size(6.dp).clip(CircleShape)
             .background(if (item.read) androidx.compose.ui.graphics.Color.Transparent else MaterialTheme.colorScheme.primary))
         Spacer(Modifier.width(6.dp))
-        RemoteImage(item.avatar, Modifier.size(44.dp).clip(CircleShape))
+        if (item.avatar != null) RemoteImage(item.avatar, Modifier.size(44.dp).clip(CircleShape))
+        else Box(Modifier.size(44.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
+            // Likes and other account events come without an avatar (YouTube shows a thumbs-up).
+            Icon(Icons.Outlined.ThumbUp, null, modifier = Modifier.size(22.dp))
+        }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(item.text, style = MaterialTheme.typography.bodyMedium, maxLines = 4, overflow = TextOverflow.Ellipsis)

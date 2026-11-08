@@ -62,6 +62,31 @@ class YouTubeDataTest {
         assertTrue(reply.read)
     }
 
+    /** browse FEnotifications_inbox (desktop since 2025): sections, comment replies, Shorts. */
+    @Test fun inboxWithSectionsRepliesAndShorts() {
+        val body = """
+        {"onResponseReceivedEndpoints":[{"openPopupAction":{"popup":{"multiPageMenuRenderer":{"sections":[
+          {"multiPageMenuNotificationSectionRenderer":{"notificationSectionTitle":{"simpleText":"Wichtig"},"items":[
+            {"notificationRenderer":{"notificationId":"a1","read":false,"shortMessage":{"simpleText":"Anni hat ein Video hochgeladen"},
+              "navigationEndpoint":{"watchEndpoint":{"videoId":"vid1"}}}}]}},
+          {"multiPageMenuNotificationSectionRenderer":{"notificationSectionTitle":{"simpleText":"Weitere Benachrichtigungen"},"items":[
+            {"notificationRenderer":{"notificationId":"r1","read":true,
+              "shortMessage":{"runs":[{"text":"@nicks2601"},{"text":" hat geantwortet: „"},{"text":"What's up?"}]},
+              "navigationEndpoint":{"commandMetadata":{"webCommandMetadata":{"sendPost":true,"apiUrl":"/youtubei/v1/notification/get_notification_menu"}},
+                "getCommentsFromInboxCommand":{"videoId":"YS80F2zjV9c","linkedCommentId":"UgzW.AbyD"}}}},
+            {"notificationRenderer":{"notificationId":"s1","read":false,"shortMessage":{"simpleText":"Short hochgeladen"},
+              "navigationEndpoint":{"reelWatchEndpoint":{"videoId":"short1"}}}}]}}
+        ]}}}}]}
+        """
+        val items = YouTubeData.parseInbox(body).items
+        assertEquals(listOf("a1", "r1", "s1"), items.map { it.id })
+        assertEquals(listOf("Wichtig", "Weitere Benachrichtigungen", "Weitere Benachrichtigungen"), items.map { it.section })
+        assertEquals("@nicks2601 hat geantwortet: „What's up?", items[1].text)
+        assertEquals("https://m.youtube.com/watch?v=YS80F2zjV9c&lc=UgzW.AbyD", items[1].url)
+        assertEquals("YS80F2zjV9c", items[1].videoId)
+        assertEquals("https://m.youtube.com/shorts/short1", items[2].url)
+    }
+
     @Test fun emptyInboxShowsYouTubesHint() {
         val body = """{"actions":[{"openPopupAction":{"popup":{"multiPageMenuRenderer":{"sections":[{"backgroundPromoRenderer":{
             "title":{"simpleText":"Hier findest du deine Benachrichtigungen"},"bodyText":{"simpleText":"Abonniere Kanäle."}}}]}}}}]}"""
