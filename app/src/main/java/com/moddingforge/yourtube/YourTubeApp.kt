@@ -40,6 +40,8 @@ class YourTubeApp : Application() {
 /** One-shot requests from outside the shell (shortcuts) to the Compose UI. */
 sealed interface ShellRequest {
     data object OpenSearch : ShellRequest
+    /** A link from outside (notification, share, other app): close search, inbox and settings. */
+    data object CloseOverlays : ShellRequest
 }
 
 /** Manual DI container. Everything here lives as long as the process. */
@@ -64,6 +66,7 @@ class AppContainer(app: Application) {
     val playerExtras = PlayerExtras(app, player, settings, json, appScope)
     val deArrow = DeArrowService(listOf(feed, player), settings, json, appScope)
     val updater = com.moddingforge.yourtube.update.Updater(app, json, appScope, settings)
+    val notifier = com.moddingforge.yourtube.notify.Notifier(app, settings)
 
     init {
         // Settings that act on the pages live.
@@ -83,6 +86,12 @@ class AppContainer(app: Application) {
             settings.settings.map { userCss(it) }.distinctUntilChanged().collect { css ->
                 feed.userCss = css
                 player.userCss = css
+            }
+        }
+        // Background notification checks follow the settings (and survive app restarts).
+        appScope.launch {
+            settings.settings.map { listOf(it.notifyVideos, it.notifyInbox, it.notifyInterval, it.notifyWifiOnly) }.distinctUntilChanged().collect {
+                com.moddingforge.yourtube.notify.NotifyWorker.schedule(app, settings.current)
             }
         }
     }

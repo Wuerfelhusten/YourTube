@@ -109,6 +109,18 @@ class MainActivity : ComponentActivity() {
                 .collect { updatePipParams() }
         }
 
+        // Signed in with notifications enabled: ask for the permission, keep the bell's count fresh.
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                container.feed.state.map { it.signedIn }.distinctUntilChanged().collect { signedIn ->
+                    if (!signedIn) return@collect
+                    val s = container.settings.current
+                    if (s.notifyVideos || s.notifyInbox) requestNotificationPermission()
+                    container.notifier.refreshUnseen()
+                }
+            }
+        }
+
         // Background playback needs the media notification (Android 13+ asks once, on the first video).
         lifecycleScope.launch {
             container.playerController.mode.first { it != PlayerMode.HIDDEN }
@@ -270,6 +282,8 @@ class MainActivity : ComponentActivity() {
             else -> null
         } ?: return
         android.util.Log.i("TT.Links", "open ${intent.action}: $url")
+        container.shellRequests.value = ShellRequest.CloseOverlays
+        container.playerController.closeSettings()
         window.decorView.post { container.playerController.navigate(url) }
     }
 
@@ -303,6 +317,11 @@ class MainActivity : ComponentActivity() {
         intent.getStringExtra("tt_update_install")?.let { name -> container.updater.debugInstall(name) }
         if (intent.hasExtra("tt_whats_new")) container.updater.debugShowWhatsNew()
         intent.getStringExtra("tt_update_fake")?.let { v -> container.updater.debugFakeUpdate(v) }
+        when (val n = intent.getStringExtra("tt_notify")) {
+            null -> Unit
+            "check" -> com.moddingforge.yourtube.notify.NotifyWorker.runNow(this)
+            else -> n.removePrefix("forget:").toIntOrNull()?.let { container.notifier.debugForget(it) }
+        }
         intent.getStringExtra("tt_eval")?.let { js -> window.decorView.post { container.feed.debugEval(js) } }
         intent.getStringExtra("tt_eval_player")?.let { js -> window.decorView.post { container.player.debugEval(js) } }
         when (intent.getStringExtra("tt_adblock_update")) {

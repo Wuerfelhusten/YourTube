@@ -115,6 +115,7 @@ private enum class Page(val title: Int) {
     ADBLOCK(R.string.settings_adblock),
     PLAYBACK(R.string.settings_playback),
     PLAYER(R.string.settings_player),
+    NOTIFICATIONS(R.string.notifications_title),
     SPONSORBLOCK(R.string.settings_sponsorblock),
     FEED(R.string.settings_feed),
     CLEANUP(R.string.settings_cleanup),
@@ -130,7 +131,9 @@ private enum class Page(val title: Int) {
 @Composable
 fun SettingsScreen(container: AppContainer, onClose: () -> Unit) {
     val context = LocalContext.current
-    var page by rememberSaveable { mutableStateOf(Page.MAIN) }
+    var page by rememberSaveable {
+        mutableStateOf(container.playerController.consumeSettingsPage()?.let { p -> Page.entries.firstOrNull { it.name == p } } ?: Page.MAIN)
+    }
     BackHandler { if (page == Page.MAIN) onClose() else page = Page.MAIN }
 
     val engine by container.filterRepository.state.collectAsStateWithLifecycle()
@@ -188,6 +191,12 @@ fun SettingsScreen(container: AppContainer, onClose: () -> Unit) {
                         if (!s.adblockEnabled) off else stringResource(R.string.summary_blocked, blocked)) { page = it }
                     NavItem(Icons.Outlined.PlayCircle, Page.PLAYBACK, stringResource(R.string.summary_playback)) { page = it }
                     NavItem(Icons.Outlined.Speed, Page.PLAYER, "${qualityLabel(s.qualityWifi)} · ${speedLabel(s.speed)}") { page = it }
+                    NavItem(Icons.Outlined.Notifications, Page.NOTIFICATIONS,
+                        if (!s.notifyVideos && !s.notifyInbox) off
+                        else listOfNotNull(
+                            stringResource(R.string.notify_videos_short).takeIf { s.notifyVideos },
+                            stringResource(R.string.notify_inbox_short).takeIf { s.notifyInbox },
+                        ).joinToString(" · ")) { page = it }
                     NavItem(Icons.Outlined.FastForward, Page.SPONSORBLOCK,
                         if (!s.sponsorBlock) off else stringResource(R.string.summary_sponsor, s.sponsorModes.count { it.value != "off" })) { page = it }
                     val feedCount = listOf(s.filterShorts, s.filterPosts, s.filterMixes, s.filterWatched, s.filterMinDuration > 0,
@@ -256,6 +265,8 @@ fun SettingsScreen(container: AppContainer, onClose: () -> Unit) {
 
                 Page.SPONSORBLOCK -> SponsorBlockPage(s, update) { picker = it }
 
+                Page.NOTIFICATIONS -> NotificationSettings(container, s, update)
+
                 Page.FEED -> {
                     Text(stringResource(R.string.feed_hint), style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
@@ -311,15 +322,6 @@ fun SettingsScreen(container: AppContainer, onClose: () -> Unit) {
                     linksEnabled?.let { enabled ->
                         Item(Icons.Outlined.Link, stringResource(R.string.links_hint_title),
                             stringResource(if (enabled) R.string.settings_links_on else R.string.settings_links_off)) { LinkHandling.openSettings(context) }
-                    }
-                    Item(Icons.Outlined.Notifications, stringResource(R.string.settings_notifications), stringResource(R.string.settings_notifications_hint)) {
-                        runCatching {
-                            context.startActivity(
-                                android.content.Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                                    .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
-                                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
-                            )
-                        }
                     }
                     Section(stringResource(R.string.settings_account))
                     Item(Icons.AutoMirrored.Filled.Logout, stringResource(R.string.settings_sign_out), stringResource(R.string.settings_sign_out_hint)) {

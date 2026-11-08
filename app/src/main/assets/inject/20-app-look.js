@@ -37,6 +37,13 @@
     /* "open in app" nags make no sense inside an app */
     ytm-app-promo-renderer, .mobile-topbar-header-open-app, ytm-companion-slot { display: none !important; }
 
+    /* --- watch page: related-videos chips ("Alle / Aus der Serie / ...") ---
+       m.youtube pins them while scrolling at header + player height; the header is hidden in
+       YourTube, so they floated 48px too low with videos showing through. Pin them right
+       below the (16:9, full width) player instead. */
+    ytm-related-chip-cloud-renderer.chips-fixed-positioning {
+      top: calc(100vw * 9 / 16) !important; transform: none !important; }
+
     /* --- watch page: action bar as labelled pills (official app style) --- */
     /* Row 1: avatar · name · Subscribe (right) - Row 2: action pills in ONE horizontally
        scrolling row, like the official app. YouTube puts all of them into one container, and we

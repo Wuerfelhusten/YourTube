@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Status bar icon: the play shape with the Y cut out (single colour, the system tints it). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="44"
+    android:viewportHeight="44">
+    <group android:translateX="-37" android:translateY="-30">
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:fillType="evenOdd"
+            android:pathData="M40,34 C40,30.9 43.3,29 46,30.5 L76,48.8 C78.7,50.4 78.7,54.2 76,55.8 L46,74 C43.3,75.6 40,73.7 40,70.6 Z M46,44 L51.3,44 L55,50.3 L58.7,44 L64,44 L57.3,54.8 L57.3,64 L52.7,64 L52.7,54.8 Z" />
+    </group>
+</vector>

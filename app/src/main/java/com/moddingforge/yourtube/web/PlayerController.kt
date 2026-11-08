@@ -68,7 +68,13 @@ class PlayerController(
     private val _settingsOpen = MutableStateFlow(false)
     val settingsOpen: StateFlow<Boolean> = _settingsOpen.asStateFlow()
 
-    fun openSettings() {
+    private var settingsPage: String? = null
+
+    /** The settings page to open first (consumed once by the settings screen). */
+    fun consumeSettingsPage(): String? = settingsPage.also { settingsPage = null }
+
+    fun openSettings(page: String? = null) {
+        settingsPage = page
         if (_fullscreen.value) setFullscreen(false, explicit = true)
         if (_mode.value == PlayerMode.EXPANDED) minimize()
         _settingsOpen.value = true

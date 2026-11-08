@@ -80,6 +80,12 @@ data class AppSettings(
     val appIcon: String = "default",
     /** versionCode whose changelog the user has seen (the "What's new" popup shows everything newer). */
     val lastSeenVersion: Int = 0,
+    // notifications
+    val notifyVideos: Boolean = false,
+    val notifyInbox: Boolean = true,
+    /** Minutes between background checks (WorkManager minimum: 15). */
+    val notifyInterval: Int = 60,
+    val notifyWifiOnly: Boolean = false,
 )
 
 /** SponsorBlock defaults: skip what clearly is not content, offer a button for the rest. */
@@ -142,6 +148,10 @@ class SettingsRepository(context: Context, private val scope: CoroutineScope) {
         val brandLogo = longPreferencesKey("brand_logo")
         val appIcon = stringPreferencesKey("app_icon")
         val lastSeenVersion = intPreferencesKey("last_seen_version")
+        val notifyVideos = booleanPreferencesKey("notify_videos")
+        val notifyInbox = booleanPreferencesKey("notify_inbox")
+        val notifyInterval = intPreferencesKey("notify_interval")
+        val notifyWifiOnly = booleanPreferencesKey("notify_wifi_only")
     }
 
     private fun Preferences.toSettings() = AppSettings(
@@ -183,6 +193,10 @@ class SettingsRepository(context: Context, private val scope: CoroutineScope) {
         brandLogo = this[Keys.brandLogo] ?: 0L,
         appIcon = this[Keys.appIcon] ?: "default",
         lastSeenVersion = this[Keys.lastSeenVersion] ?: 0,
+        notifyVideos = this[Keys.notifyVideos] ?: false,
+        notifyInbox = this[Keys.notifyInbox] ?: true,
+        notifyInterval = this[Keys.notifyInterval] ?: 60,
+        notifyWifiOnly = this[Keys.notifyWifiOnly] ?: false,
     )
 
     private val initial: AppSettings = runBlocking { store.data.first().toSettings() }
@@ -233,6 +247,10 @@ class SettingsRepository(context: Context, private val scope: CoroutineScope) {
                 p[Keys.brandLogo] = s.brandLogo
                 p[Keys.appIcon] = s.appIcon
                 p[Keys.lastSeenVersion] = s.lastSeenVersion
+                p[Keys.notifyVideos] = s.notifyVideos
+                p[Keys.notifyInbox] = s.notifyInbox
+                p[Keys.notifyInterval] = s.notifyInterval
+                p[Keys.notifyWifiOnly] = s.notifyWifiOnly
             }
         }
     }

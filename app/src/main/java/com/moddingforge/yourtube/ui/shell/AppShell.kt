@@ -115,9 +115,16 @@ fun AppShell(
     val playerMode by controller.mode.collectAsStateWithLifecycle()
     val page = if (state.url.isEmpty()) Page.HOME else Page.of(state.url)
     var searchOpen by rememberSaveable { mutableStateOf(false) }
+    var inboxOpen by rememberSaveable { mutableStateOf(false) }
+    val unseen by container.notifier.unseen.collectAsStateWithLifecycle()
+    val acknowledged by container.notifier.acknowledged.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) {
         container.shellRequests.collect { r ->
-            if (r == com.moddingforge.yourtube.ShellRequest.OpenSearch) { searchOpen = true; container.shellRequests.value = null }
+            when (r) {
+                com.moddingforge.yourtube.ShellRequest.OpenSearch -> { searchOpen = true; container.shellRequests.value = null }
+                com.moddingforge.yourtube.ShellRequest.CloseOverlays -> { searchOpen = false; inboxOpen = false; container.shellRequests.value = null }
+                null -> Unit
+            }
         }
     }
     val wide = LocalConfiguration.current.screenWidthDp >= 600
@@ -150,6 +157,8 @@ fun AppShell(
                     onOpen = holder::load,
                     onSignIn = holder::signIn,
                     brand = com.moddingforge.yourtube.ui.branding.rememberBrand(appSettings),
+                    badge = (unseen - acknowledged).coerceAtLeast(0),
+                    onBell = { inboxOpen = true; container.notifier.acknowledge() },
                 )
             } else {
                 Spacer(Modifier.fillMaxWidth().windowInsetsTopHeight(WindowInsets.statusBars))
@@ -189,6 +198,15 @@ fun AppShell(
             history = history,
             onSearch = { q -> searchOpen = false; holder.search(q) },
             onClose = { searchOpen = false },
+        )
+    }
+
+    if (inboxOpen) {
+        NotificationsScreen(
+            notifier = container.notifier,
+            onOpen = { url -> inboxOpen = false; controller.navigate(url) },
+            onSettings = { inboxOpen = false; controller.openSettings("NOTIFICATIONS") },
+            onClose = { inboxOpen = false },
         )
     }
 
@@ -257,6 +275,8 @@ private fun TopBar(
     onOpen: (String) -> Unit,
     onSignIn: () -> Unit,
     brand: com.moddingforge.yourtube.ui.branding.BrandSpec,
+    badge: Int,
+    onBell: () -> Unit,
 ) {
     var menu by remember { mutableStateOf(false) }
     Row(
@@ -283,13 +303,16 @@ private fun TopBar(
                 Text(query.orEmpty(), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyLarge)
             }
         } else {
-            if (brand.visible) {
-                com.moddingforge.yourtube.ui.branding.BrandMark(
-                    brand,
-                    Modifier.weight(1f, fill = false).clickable(onClick = onLogo).padding(start = 16.dp, end = 8.dp).height(56.dp),
-                )
+            // The brand takes all free space up to the icons (long custom texts end with "…").
+            Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                if (brand.visible) {
+                    com.moddingforge.yourtube.ui.branding.BrandMark(
+                        brand,
+                        Modifier.clickable(onClick = onLogo).padding(start = 16.dp, end = 8.dp).height(56.dp),
+                    )
+                }
             }
-            Spacer(Modifier.weight(1f))
+            if (signedIn) NotificationBell(badge, onBell)
             IconButton(onClick = onSearch) { Icon(Icons.Outlined.Search, stringResource(R.string.search)) }
         }
         Box {
