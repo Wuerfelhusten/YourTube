@@ -83,6 +83,9 @@ android {
 
         // Only the ABIs we build the Rust library for.
         ndk { abiFilters += rustAbis }
+
+        // In-app updater source (gradle.properties: truetube.updateRepo=owner/name).
+        buildConfigField("String", "UPDATE_REPO", "\"${providers.gradleProperty("truetube.updateRepo").getOrElse("")}\"")
     }
 
     signingConfigs {

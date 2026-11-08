@@ -162,6 +162,7 @@ fun AppShell(
                     LinearProgressIndicator(progress = { state.progress / 100f }, modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter))
                 }
                 if (BuildConfig.DEBUG) DebugChip(state, holder, Modifier.align(Alignment.BottomStart))
+                UpdateBanner(container.updater, Modifier.align(Alignment.BottomCenter))
             }
 
             if (tabBarShown) {

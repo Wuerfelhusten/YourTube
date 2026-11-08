@@ -75,6 +75,7 @@ class MainActivity : ComponentActivity() {
             handleShortcut(intent)
         }
         publishShortcuts()
+        container.updater.checkOnStart()
 
         // Fullscreen toggled by the user forces an orientation (see PlayerController).
         lifecycleScope.launch {
@@ -242,6 +243,7 @@ class MainActivity : ComponentActivity() {
             "search" -> container.shellRequests.value = ShellRequest.OpenSearch
             "subscriptions" -> window.decorView.post { container.playerController.navigate(com.moddingforge.truetube.web.Tab.SUBSCRIPTIONS.url) }
             "history" -> window.decorView.post { container.playerController.navigate("https://m.youtube.com/feed/history") }
+            "settings" -> window.decorView.post { container.playerController.openSettings() }
         }
     }
 
@@ -283,6 +285,7 @@ class MainActivity : ComponentActivity() {
     private fun handleDebugIntent(intent: Intent?) {
         if (!BuildConfig.DEBUG || intent == null) return
         intent.getStringExtra("tt_url")?.let { url -> window.decorView.post { container.playerController.navigate(url) } }
+        intent.getStringExtra("tt_update_repo")?.let { repo -> container.updater.repo = repo; container.updater.check() }
         intent.getStringExtra("tt_eval")?.let { js -> window.decorView.post { container.feed.debugEval(js) } }
         intent.getStringExtra("tt_eval_player")?.let { js -> window.decorView.post { container.player.debugEval(js) } }
         when (intent.getStringExtra("tt_adblock_update")) {
