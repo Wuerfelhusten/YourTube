@@ -51,7 +51,12 @@ sealed interface UpdateState {
  * Android always asks the user to confirm the install (and once to allow YourTube to install apps);
  * the release APK must be signed with the same key, otherwise Android refuses the update.
  */
-class Updater(private val app: Application, private val json: Json, private val scope: CoroutineScope) {
+class Updater(
+    private val app: Application,
+    private val json: Json,
+    private val scope: CoroutineScope,
+    private val settings: com.moddingforge.yourtube.data.SettingsRepository,
+) {
     private val _state = MutableStateFlow<UpdateState>(UpdateState.Idle)
     val state: StateFlow<UpdateState> = _state.asStateFlow()
 
@@ -121,6 +126,47 @@ class Updater(private val app: Application, private val json: Json, private val 
         job = scope.launch(Dispatchers.IO) {
             runCatching { install(release, file) }.onFailure { _state.value = UpdateState.Failed(release, it.message ?: "install failed") }
         }
+    }
+
+
+    // --- "What's new" after an update ---------------------------------------------------------
+
+    private val _whatsNew = MutableStateFlow<List<ChangelogEntry>?>(null)
+    /** Changelog entries to show once after an update; null = nothing to show. */
+    val whatsNew: StateFlow<List<ChangelogEntry>?> = _whatsNew.asStateFlow()
+
+    /**
+     * On start: after an update (not a fresh install) show every changelog entry newer than the
+     * version the user last saw. A fresh install just remembers the current version.
+     */
+    fun checkWhatsNew() {
+        val current = BuildConfig.VERSION_CODE
+        val seen = settings.current.lastSeenVersion
+        if (seen >= current) return
+        val info = runCatching { app.packageManager.getPackageInfo(app.packageName, 0) }.getOrNull()
+        val freshInstall = info != null && info.firstInstallTime == info.lastUpdateTime
+        if (freshInstall) return markWhatsNewSeen()
+        val all = Changelog.load(app)
+        // seen == 0: updated from a build without this feature - show the current version only.
+        val entries = if (seen == 0) all.filter { it.code == current } else Changelog.between(all, seen, current)
+        if (entries.isEmpty()) markWhatsNewSeen() else _whatsNew.value = entries
+    }
+
+    fun markWhatsNewSeen() {
+        _whatsNew.value = null
+        settings.update { it.copy(lastSeenVersion = BuildConfig.VERSION_CODE) }
+    }
+
+    /** Debug builds: pretend [version] is available (tests the banner without GitHub). */
+    fun debugFakeUpdate(version: String) {
+        if (!BuildConfig.DEBUG) return
+        val notes = Changelog.load(app).firstOrNull()?.text.orEmpty()
+        _state.value = UpdateState.Available(Release(version, "v$version", notes, "", "YourTube-$version.apk", 0))
+    }
+
+    /** Debug builds: show the popup for the current version right away. */
+    fun debugShowWhatsNew() {
+        if (BuildConfig.DEBUG) _whatsNew.value = Changelog.load(app).filter { it.code == BuildConfig.VERSION_CODE }
     }
 
     // --- GitHub -------------------------------------------------------------------------------

@@ -194,6 +194,8 @@ fun AppShell(
 
     if (settingsOpen) SettingsScreen(container, onClose = controller::closeSettings)
 
+    WhatsNewPopup(container.updater)
+
     LinkHint()
     }
 }

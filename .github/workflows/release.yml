@@ -47,6 +47,19 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Releasing YourTube $VERSION"
 
+      - name: Release notes from CHANGELOG.md
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          # The section "## <version>" up to the next "## " heading.
+          awk -v v="$VERSION" '
+            /^## / { if (found) exit; split($2, a, " "); h = a[1]; sub(/^v/, "", h); if (h == v) { found = 1; next } }
+            found { print }
+          ' CHANGELOG.md | sed -e '/./,$!d' > "$RUNNER_TEMP/notes.md"
+          if ! grep -q '[^[:space:]]' "$RUNNER_TEMP/notes.md"; then
+            echo "::error::CHANGELOG.md has no entry for $VERSION - add a section '## $VERSION' before releasing"; exit 1
+          fi
+          cat "$RUNNER_TEMP/notes.md"
+
       - name: Check signing secrets
         env:
           KS: ${{ secrets.YOURTUBE_KEYSTORE_BASE64 }}
@@ -127,7 +140,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           name: YourTube ${{ steps.version.outputs.version }}
-          generate_release_notes: true
+          body_path: ${{ runner.temp }}/notes.md
           files: |
             ${{ steps.apk.outputs.file }}
             ${{ steps.apk.outputs.file }}.sha256

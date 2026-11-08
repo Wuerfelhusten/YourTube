@@ -76,6 +76,7 @@ class MainActivity : ComponentActivity() {
         }
         publishShortcuts()
         container.updater.checkOnStart()
+        container.updater.checkWhatsNew()
 
         // Fullscreen toggled by the user forces an orientation (see PlayerController).
         lifecycleScope.launch {
@@ -300,6 +301,8 @@ class MainActivity : ComponentActivity() {
         intent.getStringExtra("tt_url")?.let { url -> window.decorView.post { container.playerController.navigate(url) } }
         intent.getStringExtra("tt_update_repo")?.let { repo -> container.updater.repo = repo; container.updater.check() }
         intent.getStringExtra("tt_update_install")?.let { name -> container.updater.debugInstall(name) }
+        if (intent.hasExtra("tt_whats_new")) container.updater.debugShowWhatsNew()
+        intent.getStringExtra("tt_update_fake")?.let { v -> container.updater.debugFakeUpdate(v) }
         intent.getStringExtra("tt_eval")?.let { js -> window.decorView.post { container.feed.debugEval(js) } }
         intent.getStringExtra("tt_eval_player")?.let { js -> window.decorView.post { container.player.debugEval(js) } }
         when (intent.getStringExtra("tt_adblock_update")) {

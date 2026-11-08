@@ -3,6 +3,7 @@ package com.moddingforge.yourtube.ui.shell
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -25,6 +26,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -66,13 +68,31 @@ private fun UpdateCardContent(state: UpdateState, updater: Updater, onDismiss: (
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Outlined.SystemUpdate, contentDescription = null, modifier = Modifier.size(22.dp))
             Spacer(Modifier.width(12.dp))
-            Text(
-                text = updateStatusText(state),
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = updateStatusText(state),
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                // Release notes of the new version (the GitHub release text = its CHANGELOG.md section).
+                if (state is UpdateState.Available && state.release.notes.isNotBlank()) {
+                    var showNotes by remember { mutableStateOf(false) }
+                    Text(
+                        stringResource(R.string.whats_new_link),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable { showNotes = true }.padding(vertical = 4.dp),
+                    )
+                    if (showNotes) {
+                        ChangelogDialog(
+                            stringResource(R.string.whats_new_title, state.release.version),
+                            listOf(com.moddingforge.yourtube.update.ChangelogEntry(state.release.version, state.release.notes)),
+                            onDismiss = { showNotes = false },
+                        )
+                    }
+                }
+            }
             when (state) {
                 is UpdateState.Available -> {
                     FilledTonalButton(onClick = { updater.download(state.release) }) { Text(stringResource(R.string.update_button)) }

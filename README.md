@@ -25,8 +25,8 @@ Tests: `./gradlew testDebugUnitTest`.
 
 ## Release
 
-Set `yourtube.versionName` in `gradle.properties`, commit, then push the matching tag (`git tag v1.2.3 && git push origin v1.2.3`).
-The release workflow runs the tests, builds the signed APK and publishes it; it fails if tag and version differ.
+Set `yourtube.versionName` in `gradle.properties`, add a `## 1.2.3` section to `CHANGELOG.md`, commit, then push the matching tag (`git tag v1.2.3 && git push origin v1.2.3`).
+The release workflow runs the tests, builds the signed APK and publishes it with that changelog section; it fails if tag and version differ or the changelog entry is missing. The app shows the entry once after the update.
 
 ## License
 

@@ -102,9 +102,27 @@ val cargoBuildAdblock = tasks.register<CargoNdkTask>("cargoBuildAdblock") {
     outputDir.set(layout.buildDirectory.dir("rustJniLibs"))
 }
 
+/** Copies the repository's CHANGELOG.md into the APK assets (shown in the app after updates). */
+abstract class ChangelogAssetTask : DefaultTask() {
+    @get:InputFile @get:PathSensitive(PathSensitivity.NONE) abstract val changelog: RegularFileProperty
+    @get:OutputDirectory abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun copy() {
+        val out = outputDir.get().asFile.apply { deleteRecursively(); mkdirs() }
+        changelog.get().asFile.copyTo(File(out, "CHANGELOG.md"), overwrite = true)
+    }
+}
+
+val changelogAsset = tasks.register<ChangelogAssetTask>("changelogAsset") {
+    changelog.set(rootProject.layout.projectDirectory.file("CHANGELOG.md"))
+    outputDir.set(layout.buildDirectory.dir("generated/changelogAssets"))
+}
+
 androidComponents {
     onVariants { variant ->
         variant.sources.jniLibs?.addGeneratedSourceDirectory(cargoBuildAdblock, CargoNdkTask::outputDir)
+        variant.sources.assets?.addGeneratedSourceDirectory(changelogAsset, ChangelogAssetTask::outputDir)
     }
 }
 

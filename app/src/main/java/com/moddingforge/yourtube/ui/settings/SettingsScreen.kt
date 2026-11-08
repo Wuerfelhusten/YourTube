@@ -40,6 +40,7 @@ import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Headphones
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.ManageAccounts
@@ -338,6 +339,12 @@ fun SettingsScreen(container: AppContainer, onClose: () -> Unit) {
                             is UpdateState.Downloading, is UpdateState.Installing, UpdateState.Checking -> Unit
                             else -> updater.check()
                         }
+                    }
+                    var showChangelog by remember { mutableStateOf(false) }
+                    Item(Icons.Outlined.History, stringResource(R.string.changelog_title), stringResource(R.string.changelog_summary)) { showChangelog = true }
+                    if (showChangelog) {
+                        val entries = remember { com.moddingforge.yourtube.update.Changelog.load(context) }
+                        com.moddingforge.yourtube.ui.shell.ChangelogDialog(stringResource(R.string.changelog_title), entries) { showChangelog = false }
                     }
                     Item(Icons.Outlined.Coffee, stringResource(R.string.settings_support), "ko-fi.com/wuerfelhusten") {
                         runCatching {

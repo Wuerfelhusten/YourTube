@@ -78,6 +78,8 @@ data class AppSettings(
     val brandLogo: Long = 0,
     /** Launcher icon variant (activity-alias), see ui/settings/AppIcons.kt. */
     val appIcon: String = "default",
+    /** versionCode whose changelog the user has seen (the "What's new" popup shows everything newer). */
+    val lastSeenVersion: Int = 0,
 )
 
 /** SponsorBlock defaults: skip what clearly is not content, offer a button for the rest. */
@@ -139,6 +141,7 @@ class SettingsRepository(context: Context, private val scope: CoroutineScope) {
         val brandText = stringPreferencesKey("brand_text")
         val brandLogo = longPreferencesKey("brand_logo")
         val appIcon = stringPreferencesKey("app_icon")
+        val lastSeenVersion = intPreferencesKey("last_seen_version")
     }
 
     private fun Preferences.toSettings() = AppSettings(
@@ -179,6 +182,7 @@ class SettingsRepository(context: Context, private val scope: CoroutineScope) {
         brandText = this[Keys.brandText] ?: "",
         brandLogo = this[Keys.brandLogo] ?: 0L,
         appIcon = this[Keys.appIcon] ?: "default",
+        lastSeenVersion = this[Keys.lastSeenVersion] ?: 0,
     )
 
     private val initial: AppSettings = runBlocking { store.data.first().toSettings() }
@@ -228,6 +232,7 @@ class SettingsRepository(context: Context, private val scope: CoroutineScope) {
                 p[Keys.brandText] = s.brandText
                 p[Keys.brandLogo] = s.brandLogo
                 p[Keys.appIcon] = s.appIcon
+                p[Keys.lastSeenVersion] = s.lastSeenVersion
             }
         }
     }

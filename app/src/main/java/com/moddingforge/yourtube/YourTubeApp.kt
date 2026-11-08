@@ -63,7 +63,7 @@ class AppContainer(app: Application) {
     val playbackConnector = PlaybackConnector(app, playerController, settings, appScope)
     val playerExtras = PlayerExtras(app, player, settings, json, appScope)
     val deArrow = DeArrowService(listOf(feed, player), settings, json, appScope)
-    val updater = com.moddingforge.yourtube.update.Updater(app, json, appScope)
+    val updater = com.moddingforge.yourtube.update.Updater(app, json, appScope, settings)
 
     init {
         // Settings that act on the pages live.

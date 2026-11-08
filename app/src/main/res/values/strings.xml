@@ -20,6 +20,13 @@
     <string name="links_hint_open">Open settings</string>
     <string name="cancel">Cancel</string>
     <string name="save">Save</string>
+    <string name="ok">OK</string>
+    <string name="changelog_title">Changelog</string>
+    <string name="changelog_summary">All changes, version by version</string>
+    <string name="changelog_empty">No changelog available.</string>
+    <string name="changelog_version">Version %1$s</string>
+    <string name="whats_new_title">New in YourTube %1$s</string>
+    <string name="whats_new_link">What is new?</string>
     <string name="section_branding">Branding</string>
     <string name="section_app_icon">App icon</string>
     <string name="brand_top_bar">Top bar</string>
