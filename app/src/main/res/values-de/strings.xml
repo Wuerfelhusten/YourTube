@@ -186,6 +186,11 @@
     <string name="settings_quality_wifi">Standardqualität (WLAN)</string>
     <string name="settings_quality_mobile">Standardqualität (mobile Daten)</string>
     <string name="quality_auto">Automatisch (YouTube entscheidet)</string>
+    <string name="settings_min_quality_wifi">Mindestqualität bei Automatisch (WLAN)</string>
+    <string name="settings_min_quality_mobile">Mindestqualität bei Automatisch (mobile Daten)</string>
+    <string name="min_quality_off">Aus (YouTube startet niedrig)</string>
+    <string name="zoom_fill">Auf Bildschirm gezoomt</string>
+    <string name="zoom_fit">Originalgröße</string>
     <string name="settings_speed">Standardgeschwindigkeit</string>
     <string name="settings_sponsorblock">SponsorBlock</string>
     <string name="settings_sponsorblock_hint">Überspringt Sponsor-Abschnitte (Community-Datenbank)</string>

@@ -151,7 +151,13 @@ fun SeekHint(text: String, at: Long, modifier: Modifier = Modifier) {
 }
 
 private val TOOL_SPEEDS = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f, 2.5f, 3f)
-private val TOOL_QUALITIES = listOf("auto" to null, "hd1080" to "1080p", "hd720" to "720p", "large" to "480p", "medium" to "360p", "small" to "240p")
+/** Fallback when the page has not reported the video's levels yet. */
+private val TOOL_QUALITIES = listOf("hd1080", "hd720", "large", "medium", "small")
+
+private val QUALITY_LABELS = mapOf(
+    "highres" to "8K", "hd2880" to "2880p", "hd2160" to "4K", "hd1440" to "1440p", "hd1080" to "1080p",
+    "hd720" to "720p", "large" to "480p", "medium" to "360p", "small" to "240p", "tiny" to "144p",
+)
 
 /** Native tools for the current video: speed, quality, loop, link at current time, captions off, PiP. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -174,11 +180,12 @@ fun PlayerToolsSheet(player: WebViewHolder, video: VideoState, onPip: () -> Unit
             }
             Text(stringResource(R.string.tools_quality), style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(horizontal = 20.dp))
             ChipRow {
-                for ((q, label) in TOOL_QUALITIES) {
+                val levels = video.qualities.filter { it in QUALITY_LABELS }.ifEmpty { TOOL_QUALITIES }
+                for (q in listOf("auto") + levels) {
                     FilterChip(selected = quality == q, onClick = {
                         quality = q
                         player.send(BridgeCommand.PlayerTool("quality", q))
-                    }, label = { Text(label ?: stringResource(R.string.tools_auto)) })
+                    }, label = { Text(QUALITY_LABELS[q] ?: stringResource(R.string.tools_auto)) })
                 }
             }
             ListItem(

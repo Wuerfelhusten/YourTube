@@ -144,7 +144,12 @@ fun PlayerLayer(
 
     ImmersiveMode(activity, fullscreen)
     val adjust = rememberAdjustState(activity)
-    LaunchedEffect(fullscreen) { if (!fullscreen) adjust.resetBrightness() }
+    LaunchedEffect(fullscreen) {
+        if (!fullscreen) {
+            adjust.resetBrightness()
+            player.send(BridgeCommand.PlayerTool("zoom", "off")) // zoom is per fullscreen session
+        }
+    }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val fullHeightPx = with(density) { maxHeight.toPx() }
@@ -272,6 +277,11 @@ fun PlayerLayer(
                                 }
                                 layout.onSwipeUp = { controller.setFullscreen(true, explicit = true) }
                                 layout.onSwipeDownFullscreen = { controller.setFullscreen(false, explicit = true) }
+                                layout.onPinch = { zoom ->
+                                    player.send(BridgeCommand.PlayerTool("zoom", if (zoom) "on" else "off"))
+                                    seekHint = activity.getString(if (zoom) com.moddingforge.yourtube.R.string.zoom_fill else com.moddingforge.yourtube.R.string.zoom_fit)
+                                    seekHintAt = System.currentTimeMillis()
+                                }
                                 // Brightness / volume: setting; paused while a menu is open (ours or YouTube's).
                                 layout.adjustEnabled = appSettings.swipeAdjust
                                 layout.menuOpen = toolsOpen || ytMenuOpen
@@ -309,7 +319,9 @@ fun PlayerLayer(
                             else -> Modifier.fillMaxWidth().height(screenWidth * 9 / 16)
                         }
                         Box(videoBox) {
-                            if (extras.settings.current.sponsorStrip && !ytControls) {
+                            // Fullscreen has no always-visible progress line: segments only on YouTube's
+                            // seekbar (35-player-extras.js marks) while its controls are shown.
+                            if (extras.settings.current.sponsorStrip && !ytControls && !fullscreen) {
                                 SegmentStrip(sbSegments, video.videoId, video.duration, Modifier.align(Alignment.BottomStart))
                             }
                             // Only for the video that is playing now (a stale prompt would seek this one to the old segment's end).

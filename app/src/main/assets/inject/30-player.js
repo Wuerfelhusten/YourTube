@@ -122,10 +122,27 @@
     html.tt-fs #player-container-id, html.tt-fs .player-container {
       position: fixed !important; inset: 0 !important; top: 0 !important; width: 100vw !important; height: 100vh !important;
       z-index: 2147483646 !important; transform: none !important; }
-    html.tt-fs #player, html.tt-fs #movie_player, html.tt-fs .html5-video-player { width: 100% !important; height: 100% !important; }
+    html.tt-fs #player, html.tt-fs #movie_player, html.tt-fs .html5-video-player {
+      width: 100vw !important; height: 100vh !important; }
     html.tt-fs video { object-fit: contain !important; }
   `;
   (document.head || document.documentElement).appendChild(fsStyle);
+
+  // After a rotation m.youtube sometimes keeps the video box of the old layout (video too big /
+  // pushed down, e.g. 933x525 at top 210 in a 420 px high viewport). Let it lay out again.
+  let relayouts = 0;
+  setInterval(() => {
+    if (!root.classList.contains('tt-fs')) { relayouts = 0; return; }
+    const v = document.querySelector('video');
+    if (!v || !v.videoWidth) return;
+    const b = v.getBoundingClientRect();
+    const off = b.top < -2 || b.left < -2 || b.bottom > innerHeight + 2 || b.right > innerWidth + 2
+      || (b.width < innerWidth - 4 && b.height < innerHeight - 4);
+    if (!off) { relayouts = 0; return; }
+    if (relayouts++ > 5) return; // give up instead of looping
+    TT.log('video box off after rotation: ' + [b.left, b.top, b.width, b.height].map(Math.round) + ' - relayout');
+    window.dispatchEvent(new Event('resize'));
+  }, 500);
 
   // Rotation changes the viewport, and m.youtube tends to pause on viewport changes: resume.
   let playingBeforeResize = false;
@@ -148,6 +165,13 @@
   // --- now-playing state for the native mini player ---------------------------------------
   let lastSent = 0;
   let lastKey = '';
+  function qualities() {
+    try {
+      const p = document.getElementById('movie_player');
+      const list = (p && p.getAvailableQualityLevels && p.getAvailableQualityLevels()) || [];
+      return list.filter((q) => q !== 'auto');
+    } catch (e) { return []; }
+  }
   function report(force) {
     const v = document.querySelector('video');
     const params = new URLSearchParams(location.search);
@@ -159,8 +183,9 @@
       playing: !!v && !v.paused && !v.ended,
       position: v ? v.currentTime || 0 : 0,
       duration: v && isFinite(v.duration) ? v.duration : 0,
+      qualities: qualities(),
     };
-    const key = state.videoId + state.title + state.channel + state.playing;
+    const key = state.videoId + state.title + state.channel + state.playing + state.qualities.join();
     const now = Date.now();
     if (!force && key === lastKey && now - lastSent < 1000) return;
     lastKey = key;

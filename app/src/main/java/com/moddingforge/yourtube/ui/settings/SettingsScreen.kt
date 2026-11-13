@@ -260,6 +260,8 @@ fun SettingsScreen(container: AppContainer, onClose: () -> Unit) {
                     Section(stringResource(R.string.section_defaults))
                     Item(Icons.Outlined.Wifi, stringResource(R.string.settings_quality_wifi), qualityLabel(s.qualityWifi)) { picker = Picker.QUALITY_WIFI }
                     Item(Icons.Outlined.SignalCellularAlt, stringResource(R.string.settings_quality_mobile), qualityLabel(s.qualityMobile)) { picker = Picker.QUALITY_MOBILE }
+                    if (s.qualityWifi == "auto") Item(Icons.Outlined.Wifi, stringResource(R.string.settings_min_quality_wifi), qualityLabel(s.minQualityWifi)) { picker = Picker.MIN_QUALITY_WIFI }
+                    if (s.qualityMobile == "auto") Item(Icons.Outlined.SignalCellularAlt, stringResource(R.string.settings_min_quality_mobile), qualityLabel(s.minQualityMobile)) { picker = Picker.MIN_QUALITY_MOBILE }
                     Item(Icons.Outlined.Speed, stringResource(R.string.settings_speed), speedLabel(s.speed)) { picker = Picker.SPEED }
                     Section(stringResource(R.string.section_ratings))
                     SwitchItem(Icons.Outlined.ThumbDown, stringResource(R.string.settings_ryd),
@@ -368,6 +370,10 @@ fun SettingsScreen(container: AppContainer, onClose: () -> Unit) {
             onDismiss = { picker = null }) { q -> update { it.copy(qualityWifi = q) }; picker = null }
         Picker.QUALITY_MOBILE -> ChoiceDialog(stringResource(R.string.settings_quality_mobile), QUALITIES, s.qualityMobile, { qualityLabel(it) },
             onDismiss = { picker = null }) { q -> update { it.copy(qualityMobile = q) }; picker = null }
+        Picker.MIN_QUALITY_WIFI -> ChoiceDialog(stringResource(R.string.settings_min_quality_wifi), MIN_QUALITIES, s.minQualityWifi, { qualityLabel(it) },
+            onDismiss = { picker = null }) { q -> update { it.copy(minQualityWifi = q) }; picker = null }
+        Picker.MIN_QUALITY_MOBILE -> ChoiceDialog(stringResource(R.string.settings_min_quality_mobile), MIN_QUALITIES, s.minQualityMobile, { qualityLabel(it) },
+            onDismiss = { picker = null }) { q -> update { it.copy(minQualityMobile = q) }; picker = null }
         Picker.SPEED -> ChoiceDialog(stringResource(R.string.settings_speed), SPEEDS, s.speed, { speedLabel(it) },
             onDismiss = { picker = null }) { v -> update { it.copy(speed = v) }; picker = null }
         Picker.SPONSOR_MIN -> ChoiceDialog(stringResource(R.string.sb_min_length), listOf(0, 1, 2, 3, 5, 10), s.sponsorMinLength,
@@ -538,7 +544,7 @@ private fun NavItem(icon: ImageVector, target: Page, summary: String, onOpen: (P
 
 private const val KOFI_URL = "https://ko-fi.com/wuerfelhusten"
 
-private enum class Picker { QUALITY_WIFI, QUALITY_MOBILE, SPEED, SPONSOR_MIN, MIN_DURATION, DOUBLE_TAP, START_PAGE }
+private enum class Picker { QUALITY_WIFI, QUALITY_MOBILE, MIN_QUALITY_WIFI, MIN_QUALITY_MOBILE, SPEED, SPONSOR_MIN, MIN_DURATION, DOUBLE_TAP, START_PAGE }
 
 @Composable
 private fun startPageLabel(p: String): String = when (p) {
@@ -556,11 +562,13 @@ private fun durationLabel(seconds: Int): String =
     else stringResource(R.string.filter_shorter_than_min, seconds / 60)
 
 private val QUALITIES = listOf("auto", "hd2160", "hd1440", "hd1080", "hd720", "large", "medium", "small", "tiny")
+private val MIN_QUALITIES = listOf("off", "hd1440", "hd1080", "hd720", "large", "medium")
 private val SPEEDS = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f, 2.5f, 3f)
 
 @Composable
 private fun qualityLabel(q: String): String = when (q) {
     "auto" -> stringResource(R.string.quality_auto)
+    "off" -> stringResource(R.string.min_quality_off)
     "hd2160" -> "2160p (4K)"
     "hd1440" -> "1440p"
     "hd1080" -> "1080p"

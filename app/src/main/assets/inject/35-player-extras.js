@@ -16,6 +16,8 @@
   const isAd = () => { const p = player(); return !!p && (p.classList.contains('ad-showing') || p.classList.contains('ad-interrupting')); };
 
   // --- default quality / speed ---------------------------------------------------------------
+  const QUALITY_ORDER = ['highres', 'hd2880', 'hd2160', 'hd1440', 'hd1080', 'hd720', 'large', 'medium', 'small', 'tiny'];
+  const QUALITY_HEIGHT = { highres: 4320, hd2880: 2880, hd2160: 2160, hd1440: 1440, hd1080: 1080, hd720: 720, large: 480, medium: 360, small: 240, tiny: 144 };
   let prefs = { quality: 'auto', speed: 1 };
   let appliedFor = '';
 
@@ -26,14 +28,26 @@
     if (!id || !p || !v || isAd()) return;
     const key = id + '|' + prefs.quality + '|' + prefs.speed;
     if (!force && key === appliedFor) return;
+    let levelsMissing = false;
     try {
+      const available = (p.getAvailableQualityLevels && p.getAvailableQualityLevels()) || [];
+      // The requested quality, or the best available below it.
+      const atMost = (want) => QUALITY_ORDER.slice(Math.max(0, QUALITY_ORDER.indexOf(want))).find((x) => available.includes(x));
       if (prefs.quality && prefs.quality !== 'auto' && p.setPlaybackQualityRange) {
-        // Pick the requested quality, or the best available below it.
-        const order = ['hd2160', 'hd1440', 'hd1080', 'hd720', 'large', 'medium', 'small', 'tiny'];
-        const available = (p.getAvailableQualityLevels && p.getAvailableQualityLevels()) || [];
-        const wanted = order.indexOf(prefs.quality);
-        const q = order.slice(Math.max(0, wanted)).find((x) => available.includes(x)) || prefs.quality;
+        const q = atMost(prefs.quality) || prefs.quality;
         p.setPlaybackQualityRange(q, q);
+      } else if (prefs.autoFloor && p.setPlaybackQualityRange) {
+        // "auto": YouTube's ABR starts at 240p/360p and climbs slowly. On Wi-Fi keep a floor and
+        // let it choose freely above it (up to the best level of this video).
+        const floor = atMost(prefs.autoFloor);
+        // Upper end: what the screen can show (short side in device px), like the official app.
+        const screenPx = Math.min(screen.width, screen.height) * (window.devicePixelRatio || 1);
+        const best = QUALITY_ORDER.find((x) => available.includes(x) && (QUALITY_HEIGHT[x] || 0) <= screenPx * 1.1)
+          || QUALITY_ORDER.slice().reverse().find((x) => available.includes(x));
+        if (floor && best) {
+          p.setPlaybackQualityRange(floor, best);
+          TT.log('quality range ' + floor + '..' + best);        }
+        else levelsMissing = true; // not known yet - retried on the next 'playing'
       }
     } catch (e) { /* player not ready yet */ }
     // The element accepts speeds beyond YouTube's 2x menu limit.
@@ -44,8 +58,8 @@
       guardFor = key.split('|')[0];
       guardUntil = Date.now() + 10000;
     }
-    appliedFor = key;
-    TT.log('prefs applied: ' + key);
+    if (!levelsMissing) appliedFor = key;
+    TT.log('prefs applied: ' + key + (levelsMissing ? ' (quality levels not known yet)' : ''));
   }
 
   let guardFor = '';
@@ -96,7 +110,7 @@
   }
 
   TT.on('player-prefs', (cmd) => {
-    prefs = { quality: cmd.quality || 'auto', speed: cmd.speed || 1, originalAudio: !!cmd.originalAudio, noAutoCaptions: !!cmd.noAutoCaptions };
+    prefs = { quality: cmd.quality || 'auto', speed: cmd.speed || 1, originalAudio: !!cmd.originalAudio, noAutoCaptions: !!cmd.noAutoCaptions, autoFloor: cmd.autoFloor || '' };
     applyPrefs(true);
   });
 
@@ -114,7 +128,11 @@
       }
       case 'speed': v.playbackRate = parseFloat(cmd.value) || 1; break;
       case 'quality':
-        try { if (cmd.value === 'auto') p.setPlaybackQualityRange('auto', 'auto'); else p.setPlaybackQualityRange(cmd.value, cmd.value); } catch (e) { /* ignore */ }
+        try {
+          if (cmd.value === 'auto') p.setPlaybackQualityRange('auto', 'auto');
+          else p.setPlaybackQualityRange(cmd.value, cmd.value);
+          appliedFor = currentId() + '|' + prefs.quality + '|' + prefs.speed; // the user's choice wins for this video
+        } catch (e) { /* ignore */ }
         break;
       case 'seek-to':
         try { p.seekTo(parseFloat(cmd.value), true); } catch (e) { v.currentTime = parseFloat(cmd.value); }
@@ -123,6 +141,16 @@
         try { p.seekTo(Math.max(0, v.currentTime + parseFloat(cmd.value)), true); } catch (e) { v.currentTime += parseFloat(cmd.value); }
         break;
       case 'captions-off': disableCaptions(p); break;
+      case 'zoom': { // fullscreen pinch: crop the video to fill the screen (YouTube rewrites inline sizes)
+        if (!document.getElementById('tt-zoom-css')) {
+          const s = document.createElement('style');
+          s.id = 'tt-zoom-css';
+          s.textContent = 'html.tt-zoom video.html5-main-video{width:100vw!important;height:100vh!important;left:0!important;top:0!important;object-fit:cover!important}';
+          document.documentElement.appendChild(s);
+        }
+        document.documentElement.classList.toggle('tt-zoom', cmd.value === 'on');
+        break;
+      }
       case 'close-menu': // Back with a YouTube sheet open: close it like m.youtube's own back
         if (location.hash.includes('bottom-sheet')) history.back();
         else { const s = document.querySelector('ytw-scrim'); if (s) s.click(); }

@@ -38,6 +38,9 @@ data class AppSettings(
     /** YouTube quality names: auto, hd2160, hd1440, hd1080, hd720, large, medium, small, tiny */
     val qualityWifi: String = "auto",
     val qualityMobile: String = "auto",
+    /** With "auto": lowest quality YouTube may pick ("off" = no limit). YouTube starts at 240p/360p otherwise. */
+    val minQualityWifi: String = "hd720",
+    val minQualityMobile: String = "off",
     val speed: Float = 1f,
     val sponsorBlock: Boolean = true,
     /** SponsorBlock action per category: auto | button | show | off. */
@@ -124,6 +127,8 @@ class SettingsRepository(context: Context, private val scope: CoroutineScope) {
         val customCss = stringPreferencesKey("custom_css")
         val qualityWifi = stringPreferencesKey("quality_wifi")
         val qualityMobile = stringPreferencesKey("quality_mobile")
+        val minQualityWifi = stringPreferencesKey("min_quality_wifi")
+        val minQualityMobile = stringPreferencesKey("min_quality_mobile")
         val speed = floatPreferencesKey("speed")
         val sponsorBlock = booleanPreferencesKey("sponsorblock")
         val sponsorModes = stringSetPreferencesKey("sponsorblock_modes")
@@ -169,6 +174,8 @@ class SettingsRepository(context: Context, private val scope: CoroutineScope) {
         customCss = this[Keys.customCss] ?: "",
         qualityWifi = this[Keys.qualityWifi] ?: "auto",
         qualityMobile = this[Keys.qualityMobile] ?: "auto",
+        minQualityWifi = this[Keys.minQualityWifi] ?: "hd720",
+        minQualityMobile = this[Keys.minQualityMobile] ?: "off",
         speed = this[Keys.speed] ?: 1f,
         sponsorBlock = this[Keys.sponsorBlock] ?: true,
         sponsorModes = this[Keys.sponsorModes]?.associate { it.substringBefore(":") to it.substringAfter(":") }
@@ -225,6 +232,8 @@ class SettingsRepository(context: Context, private val scope: CoroutineScope) {
                 p[Keys.customCss] = s.customCss
                 p[Keys.qualityWifi] = s.qualityWifi
                 p[Keys.qualityMobile] = s.qualityMobile
+                p[Keys.minQualityWifi] = s.minQualityWifi
+                p[Keys.minQualityMobile] = s.minQualityMobile
                 p[Keys.speed] = s.speed
                 p[Keys.sponsorBlock] = s.sponsorBlock
                 p[Keys.sponsorModes] = s.sponsorModes.map { (k, v) -> "$k:$v" }.toSet()

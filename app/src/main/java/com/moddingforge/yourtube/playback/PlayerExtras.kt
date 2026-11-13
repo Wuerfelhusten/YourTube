@@ -56,18 +56,22 @@ class PlayerExtras(
             combine(player.video.map { it.videoId }.distinctUntilChanged(), settings.settings) { id, s -> id to s }
                 .collect { (id, s) ->
                     if (id.isEmpty()) return@collect
-                    player.sendSticky(BridgeCommand.PlayerPrefs(quality = quality(s), speed = s.speed.toDouble(), originalAudio = s.originalAudio, noAutoCaptions = s.noAutoCaptions))
+                    val unmetered = unmetered()
+                    player.sendSticky(BridgeCommand.PlayerPrefs(
+                        quality = if (unmetered) s.qualityWifi else s.qualityMobile,
+                        speed = s.speed.toDouble(), originalAudio = s.originalAudio, noAutoCaptions = s.noAutoCaptions,
+                        autoFloor = (if (unmetered) s.minQualityWifi else s.minQualityMobile).takeIf { it != "off" }.orEmpty(),
+                    ))
                     sponsorBlock(id, s)
                     dislikes(id, s)
                 }
         }
     }
 
-    private fun quality(s: AppSettings): String {
+    private fun unmetered(): Boolean {
         val cm = context.getSystemService(ConnectivityManager::class.java)
         val caps = cm?.getNetworkCapabilities(cm.activeNetwork)
-        val unmetered = caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED) == true
-        return if (unmetered) s.qualityWifi else s.qualityMobile
+        return caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED) == true
     }
 
     private fun sponsorBlock(videoId: String, s: AppSettings) {

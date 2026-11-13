@@ -186,6 +186,11 @@
     <string name="settings_quality_wifi">Default quality (Wi-Fi)</string>
     <string name="settings_quality_mobile">Default quality (mobile data)</string>
     <string name="quality_auto">Auto (YouTube decides)</string>
+    <string name="settings_min_quality_wifi">Minimum quality with Auto (Wi-Fi)</string>
+    <string name="settings_min_quality_mobile">Minimum quality with Auto (mobile data)</string>
+    <string name="min_quality_off">Off (YouTube starts low)</string>
+    <string name="zoom_fill">Zoomed to fill</string>
+    <string name="zoom_fit">Original size</string>
     <string name="settings_speed">Default speed</string>
     <string name="settings_sponsorblock">SponsorBlock</string>
     <string name="settings_sponsorblock_hint">Skips sponsored segments (community database)</string>

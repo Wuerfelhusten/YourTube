@@ -49,6 +49,8 @@ sealed interface BridgeMessage {
         val playing: Boolean = false,
         val position: Double = 0.0,
         val duration: Double = 0.0,
+        /** YouTube quality names this video offers, best first (without "auto"). */
+        val qualities: List<String> = emptyList(),
     ) : BridgeMessage
 
     /** Player: playback is inside a "button" segment (category, end) - or left it (category empty). */
@@ -112,6 +114,8 @@ sealed interface BridgeCommand {
         val speed: Double,
         val originalAudio: Boolean = true,
         val noAutoCaptions: Boolean = false,
+        /** "auto" on Wi-Fi: never start below this (YouTube starts at 240p/360p otherwise). Empty = no floor. */
+        val autoFloor: String = "",
     ) : BridgeCommand
 
     /** Player tools sheet: loop on/off, set speed, set quality now (not as default). */

@@ -3,6 +3,19 @@
 Every release needs a section `## <version>` here (the release workflow fails without one).
 The section becomes the GitHub release text and is shown in the app after the update.
 
+## 0.2.5
+
+New.
+
+- Minimum quality for "Auto", separately for Wi-Fi (default 720p) and mobile data (default off): videos no longer start at 240p/360p. The upper end follows the screen resolution
+- Quality menu in the player shows the levels the video really has, up to 1440p and 4K
+- Pinch to zoom in fullscreen: fill the screen (crops the edges) or show the whole video
+
+Fixes.
+
+- The video no longer ends up shifted or cut off after rotating into fullscreen
+- No SponsorBlock strip at the bottom edge in fullscreen; segments show on the seekbar when the controls are open
+
 ## 0.2.4
 
 Fixes.

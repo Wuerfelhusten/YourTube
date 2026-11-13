@@ -20,6 +20,7 @@ import kotlin.math.max
  *  - left edge (outer quarter), up/down  -> brightness  (setting; not over YouTube's top bar / seekbar)
  *  - right edge (outer quarter), up/down -> volume
  *  - elsewhere, down                     -> leave fullscreen (official app)
+ *  - pinch out / in                         -> zoom the video to fill the screen / back (official app)
  * While a menu is open (YouTube's bottom sheets, YourTube's tools) no drag is taken over.
  */
 class PlayerDragLayout(context: Context) : FrameLayout(context) {
@@ -52,6 +53,10 @@ class PlayerDragLayout(context: Context) : FrameLayout(context) {
     var onAdjust: (kind: Adjust, delta: Float) -> Unit = { _, _ -> }
     var onAdjustEnd: () -> Unit = {}
     var onSwipeDownFullscreen: () -> Unit = {}
+    /** Pinch in fullscreen: true = zoom to fill (crop), false = whole video. */
+    var onPinch: (zoom: Boolean) -> Unit = {}
+    private var pinchStartSpan = 0f
+    private var pinchDone = false
     /** Any touch on the player (shows the native tools button). */
     var onAnyTouch: () -> Unit = {}
 
@@ -65,7 +70,7 @@ class PlayerDragLayout(context: Context) : FrameLayout(context) {
     private var lastTapX = 0f
     private var consumingDoubleTap = false
 
-    private enum class Track { NONE, MINIMIZE, SWIPE_UP, ADJUST_BRIGHTNESS, ADJUST_VOLUME, EXIT_FULLSCREEN }
+    private enum class Track { NONE, MINIMIZE, SWIPE_UP, ADJUST_BRIGHTNESS, ADJUST_VOLUME, EXIT_FULLSCREEN, PINCH }
 
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
     private val swipeDistance = 80 * resources.displayMetrics.density
@@ -80,6 +85,13 @@ class PlayerDragLayout(context: Context) : FrameLayout(context) {
         if (handleDoubleTap(ev)) return true
         if (mode == GestureMode.NONE || menuOpen) return false
         when (ev.actionMasked) {
+            MotionEvent.ACTION_POINTER_DOWN -> if (mode == GestureMode.FULLSCREEN && ev.pointerCount == 2 && track == Track.NONE) {
+                track = Track.PINCH
+                pinchStartSpan = span(ev)
+                pinchDone = false
+                parent?.requestDisallowInterceptTouchEvent(true)
+                return true // the page gets ACTION_CANCEL
+            }
             MotionEvent.ACTION_DOWN -> {
                 downX = ev.x
                 downY = ev.y
@@ -149,6 +161,19 @@ class PlayerDragLayout(context: Context) : FrameLayout(context) {
             return true
         }
         if (track == Track.NONE) return false
+        if (track == Track.PINCH) {
+            when (ev.actionMasked) {
+                MotionEvent.ACTION_MOVE -> if (!pinchDone && ev.pointerCount >= 2 && pinchStartSpan > 0f) {
+                    val ratio = span(ev) / pinchStartSpan
+                    if (ratio > 1.15f || ratio < 0.87f) {
+                        pinchDone = true
+                        onPinch(ratio > 1f)
+                    }
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> reset()
+            }
+            return true
+        }
         tracker?.addMovement(ev)
         val dy = ev.y - downY
         when (ev.actionMasked) {
@@ -168,7 +193,7 @@ class PlayerDragLayout(context: Context) : FrameLayout(context) {
                     Track.SWIPE_UP -> if (-dy > swipeDistance || vy < -1500f) onSwipeUp()
                     Track.EXIT_FULLSCREEN -> if (dy > swipeDistance || vy > 1500f) onSwipeDownFullscreen()
                     Track.ADJUST_BRIGHTNESS, Track.ADJUST_VOLUME -> onAdjustEnd()
-                    Track.NONE -> Unit
+                    Track.NONE, Track.PINCH -> Unit
                 }
                 reset()
             }
@@ -186,6 +211,11 @@ class PlayerDragLayout(context: Context) : FrameLayout(context) {
 
     /** Brightness / volume only from the outer edges, between YouTube's top bar and its seekbar. */
     private fun adjustZone() = adjustEnabled && downY > height * 0.15f && downY < height * 0.80f
+
+    private fun span(ev: MotionEvent): Float {
+        if (ev.pointerCount < 2) return 0f
+        return kotlin.math.hypot(ev.getX(0) - ev.getX(1), ev.getY(0) - ev.getY(1))
+    }
 
     private fun reset() {
         track = Track.NONE

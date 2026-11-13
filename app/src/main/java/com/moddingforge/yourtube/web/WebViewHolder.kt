@@ -65,6 +65,7 @@ data class VideoState(
     val playing: Boolean = false,
     val position: Double = 0.0,
     val duration: Double = 0.0,
+    val qualities: List<String> = emptyList(),
 )
 
 /**
@@ -540,7 +541,7 @@ class WebViewHolder(
             is BridgeMessage.OpenInFeed -> onOpenInFeed(msg.url)
             is BridgeMessage.VideoStateMsg -> _video.value = VideoState(
                 videoId = msg.videoId, title = msg.title, channel = msg.channel,
-                playing = msg.playing, position = msg.position, duration = msg.duration,
+                playing = msg.playing, position = msg.position, duration = msg.duration, qualities = msg.qualities,
             )
             is BridgeMessage.Log -> Log.println(
                 when (msg.level) { "error" -> Log.ERROR; "warn" -> Log.WARN; "debug" -> Log.DEBUG; else -> Log.INFO },
