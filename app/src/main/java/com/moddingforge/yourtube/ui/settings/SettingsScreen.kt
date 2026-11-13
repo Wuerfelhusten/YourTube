@@ -31,6 +31,7 @@ import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.ClosedCaptionDisabled
 import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.Code
+import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.Coffee
 import androidx.compose.material.icons.outlined.Cookie
 import androidx.compose.material.icons.outlined.DarkMode
@@ -89,6 +90,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -178,6 +180,7 @@ fun SettingsScreen(container: AppContainer, onClose: () -> Unit) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
             when (page) {
                 Page.MAIN -> {
+                    CrashReportItem()
                     Item(Icons.Outlined.Coffee, stringResource(R.string.settings_support), "ko-fi.com/wuerfelhusten") {
                         runCatching {
                             context.startActivity(
@@ -701,4 +704,43 @@ internal fun Item(icon: ImageVector, title: String, summary: String, onClick: ((
             Text(summary, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
+}
+
+/** Local crash log (diag/CrashLog): share it by hand, or delete it. Nothing is sent automatically. */
+@Composable
+private fun CrashReportItem() {
+    val context = LocalContext.current
+    var count by remember { mutableIntStateOf(com.moddingforge.yourtube.diag.CrashLog.entryCount()) }
+    var ask by remember { mutableStateOf(false) }
+    Item(Icons.Outlined.BugReport, stringResource(R.string.crash_report),
+        if (count == 0) stringResource(R.string.crash_report_none) else pluralStringResource(R.plurals.crash_report_entries, count, count),
+        if (count == 0) null else ({ ask = true }))
+    if (ask) AlertDialog(
+        onDismissRequest = { ask = false },
+        title = { Text(stringResource(R.string.crash_report)) },
+        text = { Text(stringResource(R.string.crash_report_hint)) },
+        confirmButton = {
+            TextButton(onClick = {
+                ask = false
+                runCatching {
+                    // As a file attachment (not raw text): stays readable in messengers and mail.
+                    val file = com.moddingforge.yourtube.diag.CrashLog.reportFile()
+                    val uri = androidx.core.content.FileProvider.getUriForFile(context, context.packageName + ".files", file)
+                    val send = android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain")
+                        .putExtra(android.content.Intent.EXTRA_SUBJECT, "YourTube crash report")
+                        .putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                        .addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    send.clipData = android.content.ClipData.newRawUri(file.name, uri) // grant also reaches the chooser preview
+                    context.startActivity(android.content.Intent.createChooser(send, null))
+                }.onFailure { android.util.Log.w("TT.CrashLog", "share failed", it) }
+            }) { Text(stringResource(R.string.crash_report_share)) }
+        },
+        dismissButton = {
+            TextButton(onClick = {
+                ask = false
+                com.moddingforge.yourtube.diag.CrashLog.clear()
+                count = 0
+            }) { Text(stringResource(R.string.crash_report_delete)) }
+        },
+    )
 }

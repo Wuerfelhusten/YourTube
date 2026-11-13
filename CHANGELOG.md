@@ -3,6 +3,16 @@
 Every release needs a section `## <version>` here (the release workflow fails without one).
 The section becomes the GitHub release text and is shown in the app after the update.
 
+## 0.2.7
+
+New.
+
+- Crash report: Settings > About > Crash report. Records crashes, freezes and the app being closed by Android, and shares them as a text file (with device, Android and WebView version). Nothing is sent automatically
+
+Fixes.
+
+- The app no longer closes on the next touch after the page engine (WebView) crashed in the background
+
 ## 0.2.6
 
 Fixes.

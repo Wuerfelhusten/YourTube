@@ -313,6 +313,7 @@ class MainActivity : ComponentActivity() {
      */
     private fun handleDebugIntent(intent: Intent?) {
         if (!BuildConfig.DEBUG || intent == null) return
+        if (intent.hasExtra("tt_crash")) throw IllegalStateException("Test crash (debug intent)")
         intent.getStringExtra("tt_url")?.let { url -> window.decorView.post { container.playerController.navigate(url) } }
         intent.getStringExtra("tt_update_repo")?.let { repo -> container.updater.repo = repo; container.updater.check() }
         intent.getStringExtra("tt_update_install")?.let { name -> container.updater.debugInstall(name) }

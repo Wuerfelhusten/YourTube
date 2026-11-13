@@ -182,6 +182,15 @@
     <string name="menu_help">Hilfe &amp; Feedback</string>
     <string name="menu_terms">Nutzungsbedingungen &amp; Datenschutz</string>
     <string name="settings_support">YourTube auf Ko-fi unterstützen</string>
+    <string name="crash_report">Fehlerbericht</string>
+    <string name="crash_report_none">Keine Abstürze gespeichert</string>
+    <string name="crash_report_hint">Enthält Gerätemodell, Android- und WebView-Version und die Fehlerdetails. Er wird nur geteilt, wenn du ihn selbst verschickst.</string>
+    <string name="crash_report_share">Teilen</string>
+    <string name="crash_report_delete">Löschen</string>
+    <plurals name="crash_report_entries">
+        <item quantity="one">%d Eintrag – zum Teilen tippen</item>
+        <item quantity="other">%d Einträge – zum Teilen tippen</item>
+    </plurals>
     <string name="settings_player">Player</string>
     <string name="settings_quality_wifi">Standardqualität (WLAN)</string>
     <string name="settings_quality_mobile">Standardqualität (mobile Daten)</string>

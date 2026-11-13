@@ -58,6 +58,7 @@ class AppWebViewClient(private val holder: WebViewHolder) : WebViewClient() {
     }
 
     override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+        com.moddingforge.yourtube.diag.CrashLog.rendererGone(holder.role.name.lowercase(), detail.didCrash(), detail.rendererPriorityAtExit())
         holder.onRenderProcessGone(view)
         return true // handled - don't crash the app
     }

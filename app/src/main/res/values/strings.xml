@@ -182,6 +182,15 @@
     <string name="menu_help">Help &amp; feedback</string>
     <string name="menu_terms">Terms &amp; privacy</string>
     <string name="settings_support">Support YourTube on Ko-fi</string>
+    <string name="crash_report">Crash report</string>
+    <string name="crash_report_none">No crashes recorded</string>
+    <string name="crash_report_hint">Contains device model, Android and WebView version and the error details. It is only shared if you send it yourself.</string>
+    <string name="crash_report_share">Share</string>
+    <string name="crash_report_delete">Delete</string>
+    <plurals name="crash_report_entries">
+        <item quantity="one">%d entry - tap to share</item>
+        <item quantity="other">%d entries - tap to share</item>
+    </plurals>
     <string name="settings_player">Player</string>
     <string name="settings_quality_wifi">Default quality (Wi-Fi)</string>
     <string name="settings_quality_mobile">Default quality (mobile data)</string>

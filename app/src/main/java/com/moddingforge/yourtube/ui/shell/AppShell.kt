@@ -246,6 +246,9 @@ private fun WebContent(holder: WebViewHolder, activity: ComponentActivity, state
                     setProgressBackgroundColorSchemeColor(spinnerBg)
                     addView(holder.attach(activity))
                     setOnRefreshListener { holder.reload() }
+                    // After a renderer crash the dead WebView is removed before Compose swaps in a
+                    // new layout: without a child SwipeRefreshLayout's own check throws an NPE on touch.
+                    setOnChildScrollUpCallback { _, child -> child?.canScrollVertically(-1) ?: true }
                     if (state.generation > 0) holder.load(holder.consumePendingUrl()) else holder.loadIfEmpty()
                 }
             },

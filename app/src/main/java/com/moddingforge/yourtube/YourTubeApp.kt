@@ -28,6 +28,7 @@ class YourTubeApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        com.moddingforge.yourtube.diag.CrashLog.install(this) // first: also catches crashes while setting up
         container = AppContainer(this)
         // Allows inspecting the WebView via chrome://inspect on the PC.
         if (BuildConfig.DEBUG) WebView.setWebContentsDebuggingEnabled(true)
