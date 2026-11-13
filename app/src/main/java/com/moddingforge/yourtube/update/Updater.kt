@@ -64,13 +64,19 @@ class Updater(
     var repo: String = BuildConfig.UPDATE_REPO
     val enabled get() = repo.isNotBlank()
 
-    private var checkedThisRun = false
+    private var lastCheck = 0L
     private var job: Job? = null
 
-    /** Once per process start. */
+    /**
+     * Each time the app comes to the foreground, at most every [RECHECK_MS]. Background playback keeps
+     * the process alive for days, so "once per process" meant: only after a force close.
+     */
     fun checkOnStart() {
-        if (checkedThisRun) return
-        checkedThisRun = true
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (lastCheck != 0L && now - lastCheck < RECHECK_MS) return
+        // A found / downloading / installing update stays as it is.
+        if (_state.value !is UpdateState.Idle && _state.value !is UpdateState.UpToDate) return
+        lastCheck = now
         check()
     }
 
@@ -294,6 +300,7 @@ class Updater(
     }
 
     companion object {
+        const val RECHECK_MS = 4 * 60 * 60 * 1000L
         fun currentVersion(): String = BuildConfig.VERSION_NAME.substringBefore('-')
 
         /** Numeric comparison of dotted versions ("0.10.0" > "0.9.3"); suffixes like "-beta" are ignored. */

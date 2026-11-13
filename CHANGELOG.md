@@ -3,6 +3,12 @@
 Every release needs a section `## <version>` here (the release workflow fails without one).
 The section becomes the GitHub release text and is shown in the app after the update.
 
+## 0.2.6
+
+Fixes.
+
+- The app now looks for updates every time it is opened (at most every 4 hours), not only after it was force-closed
+
 ## 0.2.5
 
 New.

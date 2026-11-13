@@ -291,6 +291,7 @@ class MainActivity : ComponentActivity() {
         super.onStart()
         container.feed.onStart()
         container.player.onStart()
+        container.updater.checkOnStart() // also when the app was only in the background
         if (orientationListener.canDetectOrientation()) orientationListener.enable()
     }
 
