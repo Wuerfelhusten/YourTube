@@ -53,7 +53,7 @@ sealed interface BridgeMessage {
 
     /** Player: playback is inside a "button" segment (category, end) - or left it (category empty). */
     @Serializable @SerialName("sponsor-prompt")
-    data class SponsorPrompt(val category: String = "", val end: Double = 0.0) : BridgeMessage
+    data class SponsorPrompt(val category: String = "", val end: Double = 0.0, val videoId: String = "") : BridgeMessage
 
     /** Player: YouTube's own controls (and seekbar) became visible / hidden. */
     @Serializable @SerialName("player-controls")

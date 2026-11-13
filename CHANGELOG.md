@@ -3,6 +3,13 @@
 Every release needs a section `## <version>` here (the release workflow fails without one).
 The section becomes the GitHub release text and is shown in the app after the update.
 
+## 0.2.4
+
+Fixes.
+
+- The video thumbnail shows while a video loads instead of a grey box with a pixelated play icon
+- The SponsorBlock "skip" prompt no longer sticks around when switching to another video
+
 ## 0.2.3
 
 Fixes.

@@ -1,5 +1,6 @@
 package com.moddingforge.yourtube.web
 
+import android.graphics.Bitmap
 import android.util.Log
 import android.webkit.ConsoleMessage
 import android.webkit.WebChromeClient
@@ -16,6 +17,12 @@ class AppChromeClient(private val holder: WebViewHolder) : WebChromeClient() {
     override fun onReceivedTitle(view: WebView, title: String?) {
         holder.onTitle(title.orEmpty())
     }
+
+    /**
+     * WebView draws a grey box with a large pixelated play icon over a <video> that has no poster
+     * yet (while a video loads). Transparent instead: the page's own thumbnail / our poster shows.
+     */
+    override fun getDefaultVideoPoster(): Bitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
 
     override fun onConsoleMessage(message: ConsoleMessage): Boolean {
         // Only surface our own script output in logcat; YouTube is very chatty.

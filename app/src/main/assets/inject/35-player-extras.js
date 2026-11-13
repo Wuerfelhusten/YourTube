@@ -142,6 +142,7 @@
   TT.on('sponsor-segments', (cmd) => {
     segments = { videoId: cmd.videoId, list: cmd.segments || [], skipped: new Set(), marks: cmd.marks !== false };
     marksKey = '';
+    clearPrompt(); // new segment list: indices of the old one mean nothing now
     drawMarks();
     TT.log('sponsorblock: ' + segments.list.length + ' segments for ' + cmd.videoId);
   });
@@ -184,7 +185,22 @@
   // with #bottom-sheet and dims the page with a scrim. The app pauses its swipe gestures meanwhile.
   const menuOpen = () => location.hash.includes("bottom-sheet") ||
     [...document.querySelectorAll("ytw-scrim, .ytSpecBottomSheetLayoutHost")].some((e) => e.getBoundingClientRect().height > 0 && getComputedStyle(e).visibility !== "hidden");
+  // While a video loads, show its thumbnail like the YouTube app does (instead of a blank box).
+  // hq720 is 16:9 but missing on some old videos: then hqdefault.
+  let posterFor = '';
+  function setPoster() {
+    const v = video(), id = currentId();
+    if (!v || !id || posterFor === id) return;
+    posterFor = id;
+    const hd = 'https://i.ytimg.com/vi/' + id + '/hq720.jpg';
+    const img = new Image();
+    img.onload = () => { if (currentId() === id && video()) video().poster = hd; };
+    img.onerror = () => { if (currentId() === id && video()) video().poster = 'https://i.ytimg.com/vi/' + id + '/hqdefault.jpg'; };
+    img.src = hd;
+  }
+
   setInterval(() => {
+    setPoster();
     drawMarks(); // YouTube re-renders the bar (new video, chapters)
     const c = document.querySelector('.player-controls-content');
     const shown = !!c && !isAd() && getComputedStyle(c).visibility === 'visible' && c.getBoundingClientRect().height > 0;
@@ -217,8 +233,10 @@
 
   document.addEventListener('timeupdate', (e) => {
     const v = e.target;
-    if (!(v instanceof HTMLVideoElement) || isAd()) return;
-    if (segments.videoId !== currentId() || segments.list.length === 0) return;
+    if (!(v instanceof HTMLVideoElement)) return;
+    // Another video (or an ad) is playing: a prompt from the previous one must not stay up -
+    // tapping it would seek this video to the old segment's end.
+    if (isAd() || segments.videoId !== currentId() || segments.list.length === 0) { clearPrompt(); return; }
     const t = v.currentTime;
     let inButton = -1;
     segments.list.forEach((s, i) => {
@@ -237,10 +255,11 @@
     if (inButton !== prompted) {
       prompted = inButton;
       const s = segments.list[inButton];
-      TT.post('sponsor-prompt', s ? { category: s.category, end: s.end } : {});
+      TT.post('sponsor-prompt', s ? { category: s.category, end: s.end, videoId: segments.videoId } : {});
     }
   }, true);
-  window.addEventListener('tt:navigate', () => { if (prompted !== -1) { prompted = -1; TT.post('sponsor-prompt', {}); } });
+  function clearPrompt() { if (prompted !== -1) { prompted = -1; TT.post('sponsor-prompt', {}); } }
+  window.addEventListener('tt:navigate', clearPrompt);
 
   // --- Return YouTube Dislike ------------------------------------------------------------------
   let dislikes = { videoId: '', count: -1 };

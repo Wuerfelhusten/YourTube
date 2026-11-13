@@ -312,7 +312,8 @@ fun PlayerLayer(
                             if (extras.settings.current.sponsorStrip && !ytControls) {
                                 SegmentStrip(sbSegments, video.videoId, video.duration, Modifier.align(Alignment.BottomStart))
                             }
-                            SkipButton(prompt, label = { player.sponsorLabel(it) },
+                            // Only for the video that is playing now (a stale prompt would seek this one to the old segment's end).
+                            SkipButton(prompt?.takeIf { it.videoId == video.videoId }, label = { player.sponsorLabel(it) },
                                 onSkip = { end -> player.send(BridgeCommand.PlayerTool("seek-to", end.toString())) },
                                 modifier = Modifier.align(Alignment.BottomEnd).padding(end = 12.dp, bottom = if (fullscreen) 72.dp else 44.dp))
                             ToolsButton(visibleSince = toolsShownAt, onClick = { toolsOpen = true },
