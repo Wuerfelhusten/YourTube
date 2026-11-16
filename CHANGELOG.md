@@ -3,6 +3,12 @@
 Every release needs a section `## <version>` here (the release workflow fails without one).
 The section becomes the GitHub release text and is shown in the app after the update.
 
+## 0.2.8
+
+Fixes.
+
+- A paused Short stays paused when you open or close the comments; tapping the video plays it again
+
 ## 0.2.7
 
 New.
