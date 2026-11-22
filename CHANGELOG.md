@@ -3,6 +3,12 @@
 Every release needs a section `## <version>` here (the release workflow fails without one).
 The section becomes the GitHub release text and is shown in the app after the update.
 
+## 0.2.9
+
+Fixes.
+
+- The app no longer becomes extremely slow and drops out when notifications were denied: it asked for the permission again in an endless loop. It now asks at most once per start
+
 ## 0.2.8
 
 Fixes.

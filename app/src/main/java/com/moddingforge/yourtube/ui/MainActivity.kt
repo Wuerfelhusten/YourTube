@@ -194,9 +194,17 @@ class MainActivity : ComponentActivity() {
 
     private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
+    /**
+     * At most once per process. The caller above runs on every RESUMED, and the permission dialog
+     * itself pauses/resumes the activity: when the user had denied it for good, Android answers
+     * instantly and the app asked again in an endless loop (~200 times a minute, app sluggish,
+     * eventually pushed out of the foreground).
+     */
     private fun requestNotificationPermission() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) return
+        if (askedNotificationPermission) return
+        askedNotificationPermission = true
         notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 
@@ -244,6 +252,8 @@ class MainActivity : ComponentActivity() {
     }
 
     companion object {
+        /** Process-wide: also survives activity recreation (rotation, theme change). */
+        private var askedNotificationPermission = false
         /** Long-press shortcuts on the launcher icon; tied to the active launcher alias. */
         fun publishShortcuts(context: android.content.Context, iconId: String) {
             val alias = com.moddingforge.yourtube.ui.branding.Branding.ICONS.firstOrNull { it.id == iconId }?.alias ?: ".LauncherDefault"
