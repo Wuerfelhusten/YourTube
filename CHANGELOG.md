@@ -3,6 +3,12 @@
 Every release needs a section `## <version>` here (the release workflow fails without one).
 The section becomes the GitHub release text and is shown in the app after the update.
 
+## 0.3.0
+
+New.
+
+- Free films (YouTube Movies "free with ads") now play: m.youtube refuses them in mobile browsers, so YourTube plays them through YouTube's desktop player in the background - inside the normal watch page, with its own controls, fullscreen, mini player and media controls
+
 ## 0.2.9
 
 Fixes.

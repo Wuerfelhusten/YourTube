@@ -61,6 +61,8 @@ class AppContainer(app: Application) {
     val feed = WebViewHolder(app, json, filterRepository, appScope, Role.FEED, settings)
     /** Player WebView: watch pages only (full screen or mini player). */
     val player = WebViewHolder(app, json, filterRepository, appScope, Role.PLAYER, settings)
+    /** Hidden desktop page for free films m.youtube refuses; only its video is shown, over the player. */
+    val film = WebViewHolder(app, json, filterRepository, appScope, Role.FILM, settings).also { player.film = it }
     val playerController = PlayerController(feed, player, settings)
     @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     val playbackConnector = PlaybackConnector(app, playerController, settings, appScope)
@@ -79,6 +81,7 @@ class AppContainer(app: Application) {
             settings.settings.map { it.adblockEnabled }.distinctUntilChanged().drop(1).collect {
                 feed.refreshAdblock()
                 player.refreshAdblock()
+                film.refreshAdblock()
             }
         }
         appScope.launch(Dispatchers.Main) {

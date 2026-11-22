@@ -89,6 +89,10 @@ sealed interface BridgeMessage {
     @Serializable @SerialName("fullscreen")
     data class Fullscreen(val on: Boolean) : BridgeMessage
 
+    /** Player: m.youtube refuses this video in mobile browsers (free films) - play it via the film page. */
+    @Serializable @SerialName("film-needed")
+    data class FilmNeeded(val videoId: String = "") : BridgeMessage
+
     /** The fallback script had to skip a video ad (blocking missed it). */
     @Serializable @SerialName("ad-skipped")
     data object AdSkipped : BridgeMessage
@@ -164,6 +168,10 @@ sealed interface BridgeCommand {
     /** Player: switch the page into mini layout (only the video, filling the small WebView). */
     @Serializable @SerialName("player-mini")
     data class PlayerMini(val on: Boolean) : BridgeCommand
+
+    /** Player page: a film page plays the video over the player area - hide m.youtube's error screen. */
+    @Serializable @SerialName("film-mode")
+    data class FilmMode(val on: Boolean) : BridgeCommand
 
     /** Generic hide selectors the engine returned for reported classes/ids. */
     @Serializable @SerialName("cosmetic-hide")

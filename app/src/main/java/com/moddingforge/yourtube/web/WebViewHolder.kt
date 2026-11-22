@@ -55,7 +55,8 @@ data class WebState(
  *  - FEED shows everything except the watch page (home, Shorts, subscriptions, search, channels).
  *  - PLAYER shows only /watch pages; it can be minimized to a mini player while the feed stays usable.
  */
-enum class Role { FEED, PLAYER }
+/** FILM: hidden desktop page that only supplies the video for films m.youtube refuses (see FilmMode in PlayerLayer). */
+enum class Role { FEED, PLAYER, FILM }
 
 /** Now-playing info reported by the player page (30-player.js). */
 data class VideoState(
@@ -114,6 +115,62 @@ class WebViewHolder(
     private val _menuOpen = MutableStateFlow(false)
     val menuOpen: StateFlow<Boolean> = _menuOpen.asStateFlow()
 
+    // --- film mode (player only) ------------------------------------------------------------
+    // m.youtube refuses free films ("not available in your mobile browser"). The player page then
+    // stays as it is (title, description, recommendations) and a hidden desktop page ([film],
+    // Role.FILM) supplies just the video, laid over the player area. Commands and the playback
+    // state are passed through, so everything else (media session, mini player, tools) only ever
+    // sees this holder.
+
+    /** The desktop page for films; set by AppContainer on the player holder. */
+    var film: WebViewHolder? = null
+        set(value) {
+            field = value
+            value?.onFilmVideoState = { s -> if (_filmVideoId.value != null) mergeFilmState(s) }
+        }
+
+    private val _filmVideoId = MutableStateFlow<String?>(null)
+    /** Video id currently played through [film]; null = normal playback. */
+    val filmVideoId: StateFlow<String?> = _filmVideoId.asStateFlow()
+
+    /** Film holder only: playback state for the player holder. */
+    internal var onFilmVideoState: (VideoState) -> Unit = {}
+
+    /** Last state the m.youtube page itself reported (title/channel stay from there). */
+    private var pageVideo = VideoState()
+
+    private fun startFilm(videoId: String) {
+        val f = film ?: return
+        if (_filmVideoId.value == videoId) return
+        Log.i(TAG, "film mode for $videoId (m.youtube refuses it)")
+        _filmVideoId.value = videoId
+        bridge.send(BridgeCommand.FilmMode(true))
+        f.keepRunningInBackground = keepRunningInBackground
+        f.pipActive = pipActive
+        sticky.values.forEach { f.sendSticky(it) }
+        f.load("https://www.youtube.com/watch?v=$videoId")
+    }
+
+    private fun stopFilm() {
+        if (_filmVideoId.value == null) return
+        Log.i(TAG, "film mode off")
+        _filmVideoId.value = null
+        bridge.send(BridgeCommand.FilmMode(false))
+        film?.clear()
+    }
+
+    private fun mergeFilmState(s: VideoState) {
+        _video.value = s.copy(
+            videoId = pageVideo.videoId.ifEmpty { s.videoId },
+            title = pageVideo.title.ifEmpty { s.title },
+            channel = pageVideo.channel.ifEmpty { s.channel },
+        )
+    }
+
+    /** Commands meant for the video: go to the film page while one is shown. */
+    private fun isVideoCommand(c: BridgeCommand) =
+        c is BridgeCommand.PlayerControl || c is BridgeCommand.PlayerTool || c is BridgeCommand.PlayerPrefs
+
     fun sponsorLabel(category: String): String {
         val id = SPONSOR_LABELS[category] ?: return category
         return app.getString(id)
@@ -166,6 +223,7 @@ class WebViewHolder(
 
     /** Player: the activity is in picture-in-picture; keeps Chromium from suspending the video. */
     var pipActive = false
+        set(value) { field = value; film?.pipActive = value }
 
     private var pingSentAt = 0L
 
@@ -252,7 +310,10 @@ class WebViewHolder(
         webView?.reload()
     }
 
-    fun send(command: BridgeCommand) = bridge.send(command)
+    fun send(command: BridgeCommand) {
+        val f = film
+        if (f != null && _filmVideoId.value != null && isVideoCommand(command)) f.send(command) else bridge.send(command)
+    }
 
     /** Comment to show once [videoId] has loaded (lc= links: m.youtube drops the parameter itself). */
     private var pendingComment: BridgeCommand.OpenComment? = null
@@ -267,6 +328,7 @@ class WebViewHolder(
     fun sendSticky(command: BridgeCommand) {
         sticky[command.javaClass] = command
         bridge.send(command)
+        if (_filmVideoId.value != null) film?.sendSticky(command)
     }
 
     /** Player: fullscreen layout wanted; re-applied whenever a new page becomes ready. */
@@ -285,6 +347,7 @@ class WebViewHolder(
 
     /** Player only: stop playback and free the page (mini player closed). */
     fun clear() {
+        stopFilm()
         bridge.send(BridgeCommand.PlayerControl("pause"))
         webView?.loadUrl("about:blank")
         webView?.clearHistory()
@@ -302,6 +365,7 @@ class WebViewHolder(
         return when (role) {
             Role.FEED -> if (page == Page.WATCH) { onOpenVideo(url); true } else false
             Role.PLAYER -> if (youTubeContent && page != Page.WATCH) { onOpenInFeed(url); true } else false
+            Role.FILM -> false
         }
     }
 
@@ -339,6 +403,7 @@ class WebViewHolder(
 
     fun onStart() {
         webView?.onResume()
+        film?.onStart()
         refreshSignIn()
     }
 
@@ -370,9 +435,11 @@ class WebViewHolder(
 
     /** Player: keep running while the app is in the background (background playback / PiP). */
     var keepRunningInBackground = false
+        set(value) { field = value; film?.keepRunningInBackground = value }
 
     fun onStop() {
         if (!keepRunningInBackground && !pipActive) webView?.onPause()
+        film?.onStop()
         CookieManager.getInstance().flush()
     }
 
@@ -394,6 +461,8 @@ class WebViewHolder(
             layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             setBackgroundColor(Color.TRANSPARENT)
             configureSettings(settings)
+            // The desktop page comes up zoomed in ~5 % (video cut at the edges): pin it to 100 %.
+            if (role == Role.FILM) setInitialScale((resources.displayMetrics.density * 100).toInt())
 
             CookieManager.getInstance().apply {
                 setAcceptCookie(true)
@@ -422,7 +491,7 @@ class WebViewHolder(
         s.setSupportZoom(false)
         s.builtInZoomControls = false
         s.displayZoomControls = false
-        s.userAgentString = UserAgent.build(app)
+        s.userAgentString = if (role == Role.FILM) UserAgent.desktop(app) else UserAgent.build(app)
 
         if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)) {
             // YouTube has its own dark theme; it follows prefers-color-scheme (driven by the app theme).
@@ -492,6 +561,7 @@ class WebViewHolder(
                 sticky.values.forEach(bridge::send)
                 if (role == Role.PLAYER) {
                     bridge.send(BridgeCommand.PlayerMini(miniMode))
+                    if (_filmVideoId.value != null) bridge.send(BridgeCommand.FilmMode(true))
                     if (fullscreenMode) bridge.send(BridgeCommand.PlayerFullscreen(true))
                 }
             }
@@ -516,6 +586,7 @@ class WebViewHolder(
                 Log.i(Bridge.TAG, "[$role] navigation ${msg.url} | ${msg.title}")
                 _state.update { it.copy(url = msg.url, title = msg.title, canGoBack = webView?.canGoBack() ?: false) }
                 refreshSignIn()
+                _filmVideoId.value?.let { id -> if (!msg.url.contains("v=$id")) stopFilm() }
                 enforceRole(msg.url)
                 pendingComment?.takeIf { msg.url.contains("v=${it.videoId}") }?.let { send(it); pendingComment = null }
             }
@@ -539,10 +610,23 @@ class WebViewHolder(
             BridgeMessage.OpenSettings -> onOpenSettings()
             is BridgeMessage.OpenVideo -> onOpenVideo(msg.url)
             is BridgeMessage.OpenInFeed -> onOpenInFeed(msg.url)
-            is BridgeMessage.VideoStateMsg -> _video.value = VideoState(
-                videoId = msg.videoId, title = msg.title, channel = msg.channel,
-                playing = msg.playing, position = msg.position, duration = msg.duration, qualities = msg.qualities,
-            )
+            is BridgeMessage.VideoStateMsg -> {
+                val s = VideoState(
+                    videoId = msg.videoId, title = msg.title, channel = msg.channel,
+                    playing = msg.playing, position = msg.position, duration = msg.duration, qualities = msg.qualities,
+                )
+                when {
+                    role == Role.FILM -> { _video.value = s; onFilmVideoState(s) }
+                    _filmVideoId.value != null -> {
+                        // The page itself has no video now; keep its title/channel, playback from the film.
+                        if (s.videoId != _filmVideoId.value && s.videoId.isNotEmpty()) stopFilm()
+                        pageVideo = s
+                        if (_filmVideoId.value == null) _video.value = s else film?.video?.value?.let(::mergeFilmState)
+                    }
+                    else -> { pageVideo = s; _video.value = s }
+                }
+            }
+            is BridgeMessage.FilmNeeded -> if (role == Role.PLAYER && msg.videoId.isNotEmpty()) startFilm(msg.videoId)
             is BridgeMessage.Log -> Log.println(
                 when (msg.level) { "error" -> Log.ERROR; "warn" -> Log.WARN; "debug" -> Log.DEBUG; else -> Log.INFO },
                 "TT.JS", msg.message,
@@ -581,6 +665,12 @@ object Account {
 
 /** Default WebView UA without the "; wv" and "Version/4.0" markers, so it looks like Chrome Mobile. */
 object UserAgent {
+    /** Desktop Chrome: www.youtube.com serves films (Widevine) that it refuses to mobile browsers. */
+    fun desktop(context: Context): String {
+        val chrome = Regex("""Chrome/(\d+)""").find(WebSettings.getDefaultUserAgent(context))?.groupValues?.get(1) ?: "131"
+        return "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/$chrome.0.0.0 Safari/537.36"
+    }
+
     private val versionToken = Regex("""Version/\d+(\.\d+)*\s""")
 
     fun build(context: Context): String =

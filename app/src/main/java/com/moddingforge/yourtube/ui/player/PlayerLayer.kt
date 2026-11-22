@@ -115,6 +115,9 @@ fun PlayerLayer(
     val player = controller.player
     val state by player.state.collectAsStateWithLifecycle()
     val video by player.video.collectAsStateWithLifecycle()
+    // Film mode: a hidden desktop page (player.film) supplies the video over the player area.
+    val filmId by player.filmVideoId.collectAsStateWithLifecycle()
+    var filmTapAt by remember { mutableLongStateOf(0L) }
     val expanded = mode == PlayerMode.EXPANDED
     val portrait = LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
     val scope = rememberCoroutineScope()
@@ -295,9 +298,28 @@ fun PlayerLayer(
                                     seekHintAt = System.currentTimeMillis()
                                 }
                                 layout.onAnyTouch = { toolsShownAt = System.currentTimeMillis() }
+                                layout.onTap = { if (filmId != null) filmTapAt = System.currentTimeMillis() }
+                                layout.nativeDoubleTap = filmId != null
+                                val film = player.film
+                                if (filmId != null && film != null) {
+                                    val view = layout.overlayView ?: film.attach(activity)
+                                    val fill = fullscreen || (pip && liveWasFullscreen)
+                                    val b = playerBox?.takeIf { it.width > 0 && it.height > 0 && it.top in -4..4 }
+                                    val px = density.density
+                                    when {
+                                        fill -> layout.setOverlay(view, 0, 0, -1, -1)
+                                        b != null -> layout.setOverlay(view, (b.left * px).toInt(), (b.top * px).toInt(), (b.width * px).toInt(), (b.height * px).toInt())
+                                        else -> layout.setOverlay(view, 0, 0, -1, (with(density) { screenWidth.toPx() } * 9 / 16).toInt())
+                                    }
+                                } else if (layout.overlayView != null) {
+                                    layout.setOverlay(null, 0, 0, 0, 0)
+                                    film?.detach(activity)
+                                }
                             },
                             onRelease = { layout ->
                                 android.util.Log.i("TT.Player", "player AndroidView released")
+                                layout.setOverlay(null, 0, 0, 0, 0)
+                                player.film?.detach(activity)
                                 player.detach(activity)
                                 layout.removeAllViews()
                             },
@@ -328,6 +350,15 @@ fun PlayerLayer(
                             SkipButton(prompt?.takeIf { it.videoId == video.videoId }, label = { player.sponsorLabel(it) },
                                 onSkip = { end -> player.send(BridgeCommand.PlayerTool("seek-to", end.toString())) },
                                 modifier = Modifier.align(Alignment.BottomEnd).padding(end = 12.dp, bottom = if (fullscreen) 72.dp else 44.dp))
+                            if (filmId != null) {
+                                FilmControls(
+                                    video = video, tapAt = filmTapAt, fullscreen = fullscreen,
+                                    onToggle = controller::togglePlay,
+                                    onSeek = { pos -> player.send(BridgeCommand.PlayerControl("seek", pos)) },
+                                    onFullscreen = { controller.setFullscreen(!fullscreen, explicit = true) },
+                                    modifier = Modifier.matchParentSize(),
+                                )
+                            }
                             ToolsButton(visibleSince = toolsShownAt, onClick = { toolsOpen = true },
                                 modifier = Modifier.align(Alignment.TopStart).padding(top = 8.dp, start = 10.dp))
                             SeekHint(seekHint, seekHintAt, Modifier.align(Alignment.Center))

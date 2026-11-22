@@ -59,6 +59,49 @@ class PlayerDragLayout(context: Context) : FrameLayout(context) {
     private var pinchDone = false
     /** Any touch on the player (shows the native tools button). */
     var onAnyTouch: () -> Unit = {}
+    /** A short single tap (no drag) - toggles the native film controls. */
+    var onTap: () -> Unit = {}
+    private var tapDownAt = 0L
+    private var tapX = 0f
+    private var tapY = 0f
+
+    /**
+     * Film mode: the film page (another WebView) is shown over the player area. It never gets
+     * touches - they reach the player page below and this layout's gestures as before.
+     */
+    private val overlayHost = object : FrameLayout(context) {
+        @SuppressLint("ClickableViewAccessibility")
+        override fun dispatchTouchEvent(ev: MotionEvent): Boolean = false
+    }.also { addView(it, LayoutParams(0, 0)) }
+
+    /** Shows [view] (null = none) at [left]/[top] with [width] x [height] px; width < 0 = fill. */
+    fun setOverlay(view: android.view.View?, left: Int, top: Int, width: Int, height: Int) {
+        if (view == null) {
+            if (overlayHost.childCount > 0) overlayHost.removeAllViews()
+            overlayHost.visibility = GONE
+            return
+        }
+        if (view.parent !== overlayHost) {
+            (view.parent as? android.view.ViewGroup)?.removeView(view)
+            overlayHost.removeAllViews()
+            overlayHost.addView(view, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        }
+        overlayHost.visibility = VISIBLE
+        overlayHost.bringToFront()
+        val lp = (overlayHost.layoutParams as LayoutParams)
+        val w = if (width < 0) LayoutParams.MATCH_PARENT else width
+        val h = if (height < 0) LayoutParams.MATCH_PARENT else height
+        if (lp.width != w || lp.height != h || lp.leftMargin != left || lp.topMargin != top) {
+            lp.width = w; lp.height = h; lp.leftMargin = left; lp.topMargin = top
+            overlayHost.layoutParams = lp
+        }
+    }
+
+    /** Take over double taps even for 10 s (film mode: YouTube's own handler is not reachable). */
+    var nativeDoubleTap = false
+
+    /** The view currently shown by [setOverlay], if any. */
+    val overlayView: android.view.View? get() = overlayHost.getChildAt(0)
 
     /**
      * Native double-tap seek with a custom length. 0 or 10 = leave it to YouTube's own handler
@@ -82,6 +125,7 @@ class PlayerDragLayout(context: Context) : FrameLayout(context) {
 
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
         if (ev.actionMasked == MotionEvent.ACTION_DOWN) onAnyTouch()
+        detectTap(ev)
         if (handleDoubleTap(ev)) return true
         if (mode == GestureMode.NONE || menuOpen) return false
         when (ev.actionMasked) {
@@ -131,9 +175,18 @@ class PlayerDragLayout(context: Context) : FrameLayout(context) {
         return false
     }
 
+    private fun detectTap(ev: MotionEvent) {
+        when (ev.actionMasked) {
+            MotionEvent.ACTION_DOWN -> { tapDownAt = ev.eventTime; tapX = ev.x; tapY = ev.y }
+            MotionEvent.ACTION_POINTER_DOWN -> tapDownAt = 0L
+            MotionEvent.ACTION_UP -> if (tapDownAt != 0L && ev.eventTime - tapDownAt < 300 &&
+                abs(ev.x - tapX) < touchSlop && abs(ev.y - tapY) < touchSlop && !consumingDoubleTap) onTap()
+        }
+    }
+
     /** @return true when the second tap of a double tap is taken over (the page never sees it). */
     private fun handleDoubleTap(ev: MotionEvent): Boolean {
-        if (doubleTapSeconds <= 0 || doubleTapSeconds == 10) return false
+        if (doubleTapSeconds <= 0 || (doubleTapSeconds == 10 && !nativeDoubleTap)) return false
         val onVideo = mode == GestureMode.FULLSCREEN || ev.y <= videoHeight()
         when (ev.actionMasked) {
             MotionEvent.ACTION_DOWN -> {

@@ -6,7 +6,8 @@
 
 (function () {
   if (window.top !== window || !/(^|\.)youtube\.com$/.test(location.hostname)) return;
-  if (TT_CONFIG.role !== 'player') return;
+  // Also on the film page (desktop, 36-film.js): default quality/speed and the tools sheet work the same there.
+  if (TT_CONFIG.role !== 'player' && TT_CONFIG.role !== 'film') return;
   const TT = window.YourTube;
   if (!TT) return;
 
@@ -314,4 +315,30 @@
   });
   // The action bar is (re)rendered by YouTube at any time; keep the label in place.
   setInterval(applyDislikes, 1000);
+
+  // --- films: m.youtube refuses them ------------------------------------------------------------
+  // Free films answer with UNPLAYABLE and a "watch in the YouTube app" deep link (mweb_to_native).
+  // The app then plays them through a hidden desktop page laid over the player area (film mode).
+  if (TT_CONFIG.role === 'player') {
+    let filmFor = '';
+    setInterval(() => {
+      const id = currentId();
+      if (!id || id === filmFor) return;
+      let st = null;
+      try { const p = player(); st = p && p.getPlayerResponse && p.getPlayerResponse().playabilityStatus; } catch (e) { return; }
+      if (!st || st.status === 'OK') return;
+      if (!JSON.stringify(st).includes('mweb_to_native')) return;
+      filmFor = id;
+      TT.log('film: ' + id + ' refused in mobile browsers (' + st.status + ')');
+      TT.post('film-needed', { videoId: id });
+    }, 500);
+    window.addEventListener('tt:navigate', () => { filmFor = ''; });
+
+    const filmCss = document.createElement('style');
+    filmCss.id = 'tt-film-cover';
+    filmCss.textContent = 'html.tt-film #movie_player { visibility: hidden !important; } '
+      + 'html.tt-film #player-container-id, html.tt-film .player-container { background: #000 !important; }';
+    (document.head || document.documentElement).appendChild(filmCss);
+    TT.on('film-mode', (cmd) => document.documentElement.classList.toggle('tt-film', !!cmd.on));
+  }
 })();
