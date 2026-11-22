@@ -3,6 +3,12 @@
 Every release needs a section `## <version>` here (the release workflow fails without one).
 The section becomes the GitHub release text and is shown in the app after the update.
 
+## 0.3.1
+
+New.
+
+- GIFs in comments are shown: m.youtube only displays "GIFs aren't supported on this device", YourTube now loads the GIF and shows it in place
+
 ## 0.3.0
 
 New.
